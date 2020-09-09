@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Code Infinity (Pty) Ltd. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <carriers>
+            <picup>
+                <model>Picup\Shipping\Model\Carrier\PicUp</model>
+                <active>1</active>
+                <name>PicUp Shipping</name>
+                <title>PicUp Shipping Module</title>
+                <testMode>1</testMode>
+                <apiKey>business-7c8350fa-0393-4c58-ba0c-3e547bf8834f</apiKey>
+                <apiKeyTest>business-7c8350fa-0393-4c58-ba0c-3e547bf8834f</apiKeyTest>
+                <warehouseId></warehouseId>
+                <warehouseName></warehouseName>
+                <enableOnDemand>1</enableOnDemand>
+                <sort_order>10</sort_order>
+                <flatRate>9999</flatRate>
+                <storeCountry>South Africa</storeCountry>
+                <defaultPackageHeight>50</defaultPackageHeight>
+                <defaultPackageWidth>50</defaultPackageWidth>
+                <defauklPackageLength>50</defauklPackageLength>
+            </picup>
+        </carriers>
+    </default>
+</config>

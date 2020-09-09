@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Picup_Shipping::main" title="Admin" module="Picup_Shipping" sortOrder="10" resource="Picup_Shipping::settings" action="picup/settings/index" />
+    </menu>
+</config>

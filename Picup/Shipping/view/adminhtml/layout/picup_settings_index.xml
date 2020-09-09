@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <head>
+        <title>Picup</title>
+    </head>
+    <body>
+        <referenceContainer name="content">
+            <block class="Picup\Shipping\Block\Admin\Shifts" name="picup_settings_index" template="Picup_Shipping::settings.phtml"/>
+        </referenceContainer>
+    </body>
+</page>
