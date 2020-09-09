@@ -12,8 +12,36 @@ The recommended installation is to install the plugin using composer but a manua
 ### Composer Installation
 
 ```
-composer require 
+composer require pickuptechnologies/picup-magento-publish
 ```
 
 ### Manual Installation
+
+```
+git clone https://github.com/PicupTechnologies/picup-magento-publish.git
+```
+Copy the Picup folder from the respository to your Magento2 webroot and place the files
+under app/code
+
+### Post Installation
+
+From your website root folder you should run the following to make sure the plugin installed correctly
+
+```
+bin/magento setup:upgrade
+bin/magento setup:static-content:deploy --force
+```
+
+### Overview
+
+## Picup Setup
+
+You need to register for a Picup account and retrieve your API keys so you can integrate your store.
+
+
+## Store Setup
+
+## Shift Setup
+
+## Product Setup
 
