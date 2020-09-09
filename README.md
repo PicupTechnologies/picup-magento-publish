@@ -12,7 +12,7 @@ The recommended installation is to install the plugin using composer but a manua
 ### Composer Installation
 
 ```
-composer require pickuptechnologies/picup-magento-publish
+composer require pickup/magento
 ```
 
 ### Manual Installation
