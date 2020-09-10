@@ -2,7 +2,7 @@
   "name": "picup/shipping",
   "description": "Picup Shipping Module",
   "type": "magento2-module",
-  "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
   "require": {
     "php": "^7.2.2",
     "magento/framework": "101.0.*"
