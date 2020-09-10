@@ -12,7 +12,7 @@ The recommended installation is to install the plugin using composer but a manua
 ### Composer Installation
 
 ```
-composer require pickup/magento
+composer require pickup/shipping
 ```
 
 ### Manual Installation
