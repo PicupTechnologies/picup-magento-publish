@@ -12,7 +12,7 @@ The recommended installation is to install the plugin using composer but a manua
 ### Composer Installation
 
 ```
-composer require pickup/shipping
+composer require picup/shipping
 ```
 
 ### Manual Installation
@@ -30,6 +30,7 @@ Copy the Picup folder from the code respository to your Magento2 webroot and pla
 From your website root folder you should run the following to make sure the plugin installed correctly
 
 ```
+bin/magento module:enable Picup_Shipping
 bin/magento setup:upgrade
 bin/magento setup:static-content:deploy --force
 bin/magento cache:clean
@@ -80,7 +81,7 @@ Click on the store settings link in the Magento plugin and it will take you to y
 Removing our plugin is as easy as the installation
 
 ```
-composer remove pickup/shipping
+composer remove picup/shipping
 bin/magento setup:upgrade
 bin/magento cache:clean
 bin/magento cache:flush
