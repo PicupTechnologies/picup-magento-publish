@@ -13,8 +13,8 @@
                 <name>PicUp Shipping</name>
                 <title>PicUp Shipping Module</title>
                 <testMode>1</testMode>
-                <apiKey></apiKey>
-                <apiKeyTest></apiKeyTest>
+                <apiKey>business-7c8350fa-0393-4c58-ba0c-3e547bf8834f</apiKey>
+                <apiKeyTest>business-7c8350fa-0393-4c58-ba0c-3e547bf8834f</apiKeyTest>
                 <warehouseId></warehouseId>
                 <warehouseName></warehouseName>
                 <enableOnDemand>1</enableOnDemand>
