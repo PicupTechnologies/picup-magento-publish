@@ -55,7 +55,9 @@ class SaveProductFields implements ObserverInterface {
 
 
     public function saveProductFields($productSku, $enabled, $width, $length, $height, $storeId, $shiftData) {
-        $shiftData = serialize($shiftData);
+        //$shiftData = serialize($shiftData);
+
+        $shiftData = \Magento\Framework\Serialize\SerializerInterface::serialize($shiftData);
         $tableName = $this->_resourceConnection->getTableName('picup_products');
         $connection = $this->_resourceConnection->getConnection();
 

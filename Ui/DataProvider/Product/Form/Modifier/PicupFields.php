@@ -79,7 +79,7 @@ class PicupFields extends AbstractModifier
 
         if (is_array($productData) && !empty($productData)) {
             $productData = $productData[0];
-            $productData["shift_data"] = unserialize($productData["shift_data"]);
+            $productData["shift_data"] = \Magento\Framework\Serialize\SerializerInterface::unserialize($productData["shift_data"]);
         } else {
             $productData = null;
         }

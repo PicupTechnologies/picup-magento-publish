@@ -25,6 +25,8 @@ class Shifts extends \Magento\Framework\View\Element\Template
     protected $_objectManager;
     protected $_formKey;
 
+    protected $_request;
+
 
     /**
      * Shifts constructor.
@@ -33,6 +35,7 @@ class Shifts extends \Magento\Framework\View\Element\Template
      */
     function __construct(Template\Context $context,
                          \Magento\Framework\Data\Form\FormKey $formKey,
+                         \Magento\Framework\App\Request\Http $request,
 
                          array $data = [])
     {
@@ -41,6 +44,8 @@ class Shifts extends \Magento\Framework\View\Element\Template
         $this->_storeManager = $this->_objectManager->get('Magento\Store\Model\StoreManagerInterface');
         $this->_resourceConnection = $this->_objectManager->get('Magento\Framework\App\ResourceConnection');
         $this->_formKey = $formKey;
+        $this->_request = $request;
+
 
     }
 
@@ -50,6 +55,14 @@ class Shifts extends \Magento\Framework\View\Element\Template
      */
     function getFormKey() {
         return $this->_formKey->getFormKey();
+    }
+
+    /**
+     * Gets the http request
+     * @return \Magento\Framework\App\Request\Http
+     */
+    public function getRequest() {
+        return $this->_request;
     }
 
     /**
@@ -101,6 +114,5 @@ class Shifts extends \Magento\Framework\View\Element\Template
         $connection->query("delete from {$tableName} where id = {$shiftId}");
         return true;
     }
-
 
 }
