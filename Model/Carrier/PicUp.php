@@ -5,7 +5,7 @@ use Magento\Shipping\Model\Rate\Result;
 class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \Magento\Shipping\Model\Carrier\CarrierInterface {
 
     protected $_URI_LIVE = 'https://otdcpt-knupprd.onthedot.co.za/picup-api/v1/integration/';
-    protected $_URI_TEST = 'https://otdcpt-knupqa.onthedot.co.za/picup-api/v1/integration/';
+    protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
 
     protected $_QUOTE_ONE_TO_MANY_LIVE = 'quote/one-to-many';
     protected $_QUOTE_ONE_TO_MANY_TEST = 'quote/one-to-many';

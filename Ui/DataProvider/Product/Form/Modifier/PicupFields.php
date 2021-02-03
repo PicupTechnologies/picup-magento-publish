@@ -81,13 +81,8 @@ class PicupFields extends AbstractModifier
     public function modifyData(array $data)
     {
         foreach ($data as $key => $value) {
-
-
-
             if (!isset($value["product"])) continue;
-            if (empty($productData)) {
-                $productSku = 'NEW';
-                $productData = $this->getProductData($productSku, $this->locator->getStore()->getId());
+            if (empty($value["product"])) {
                 $data[$key]["product"]["picup"]["picup_enabled"] = '1';
                 $data[$key]["product"]["picup"]["picup_width"] = '1';
                 $data[$key]["product"]["picup"]["picup_height"] = '1';
@@ -238,8 +233,10 @@ class PicupFields extends AbstractModifier
         $shifts = $this->getShifts($this->locator->getStore()->getId());
 
         $shiftChoices = [];
+        $countShifts = 0;
         foreach ($shifts as $id => $shift) {
             $shiftChoices[] = ['value' => $shift["id"], 'label' => __($shift["description"])];
+            $countShifts++;
         }
 
         return [
