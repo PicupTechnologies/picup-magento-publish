@@ -19,10 +19,11 @@ class Shifts extends \Magento\Framework\View\Element\Template
      * @param Template\Context $context
      * @param array $data
      */
-    function __construct(Template\Context $context,
-                         \Magento\Framework\Data\Form\FormKey $formKey,
-
-                         array $data = [])
+    public function __construct(
+        Template\Context $context,
+        \Magento\Framework\Data\Form\FormKey $formKey,
+        array $data = []
+    )
     {
         parent::__construct($context, $data);
         $this->_objectManager = \Magento\Framework\App\ObjectManager::getInstance();
@@ -36,7 +37,7 @@ class Shifts extends \Magento\Framework\View\Element\Template
      * Gets a form key
      * @return mixed
      */
-    function getFormKey() {
+    public function getFormKey() {
         return $this->_formKey->getFormKey();
     }
 

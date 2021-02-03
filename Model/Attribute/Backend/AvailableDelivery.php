@@ -14,7 +14,7 @@ class AvailableDelivery extends \Magento\Eav\Model\Entity\Attribute\Backend\Abst
      * @throws \Magento\Framework\Exception\LocalizedException
      * @return bool
      */
-    public function validate($object)
+    public function validate($object): bool
     {
         $value = $object->getData($this->getAttribute()->getAttributeCode());
         

@@ -12,7 +12,7 @@ class AvailableDelivery extends \Magento\Eav\Model\Entity\Attribute\Source\Abstr
      * Get all options
      * @return array
      */
-    public function getAllOptions()
+    public function getAllOptions(): array
     {
         if (!$this->_options) {
             $this->_options = [

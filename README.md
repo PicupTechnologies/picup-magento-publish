@@ -1,6 +1,14 @@
 [logo]: ./picup-logo.png "Picup"
 ![Picup Logo][logo]
 
+#Introduction
+
+The Picup Shipping module comprises of the following:
+ - Direct Access to the Picup Admin module via the Magento Backend
+ - Integrated weight and dimensions on each product
+ - Scheduled deliveries
+ - Realtime pricing on delivery on checkout
+
 #Picup Shipping - Magento2 Plugin
 
 The Picup Shipping module has been tested on Magento 2.3.4 and higher and will be continuously maintained to support newer versions of magento.
