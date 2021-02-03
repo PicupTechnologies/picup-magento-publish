@@ -1,19 +1,19 @@
 <?php
 /**
- * Picup
+ * Copyright 2020  Picup Technology (Pty) Ltd or its affiliates. All Rights Reserved.
  *
- * NOTICE OF LICENSE
+ * Licensed under the GNU General Public License, Version 3.0 or later(the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
  *
+ *  https://opensource.org/licenses/GPL-3.0
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category    Picup
- * @package     Picup_Shipping
- * @copyright   Copyright (c) Picup Technologies (Pty) Ltd (https://www.picup.co.za/)
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
+
 namespace Picup\Shipping\Block\System\Config;
 
 use Magento\Backend\Block\Template\Context;

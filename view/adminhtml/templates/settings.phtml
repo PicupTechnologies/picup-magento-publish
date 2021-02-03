@@ -1,32 +1,50 @@
 <?php
+/**
+ * Copyright 2020  Picup Technology (Pty) Ltd or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the GNU General Public License, Version 3.0 or later(the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  https://opensource.org/licenses/GPL-3.0
+ *
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
 
 $WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+$request = $block->getRequest();
 
 $stores = $block->getStores();
 
 //Get the first store
-if (empty($_REQUEST["storeId"])) {
+if (empty($request->storeId)) {
     foreach ($stores as $store) {
-        $_REQUEST["storeId"] = $store->getId();
+        $request->storeId = $store->getId();
         break;
     }
 }
 
 //set the data target
-if (empty($_REQUEST["data-target"])) {
-    $_REQUEST["data-target"] = "warehouse";
-}
-
-if (!empty($_REQUEST["deleteId"])) {
-    $block->deleteShift($_REQUEST["deleteId"]);
-}
-
-if (!empty($_REQUEST["weekDay"]) && !empty($_REQUEST["description"]) && !empty($_REQUEST["timeFrom"])&& !empty($_REQUEST["timeTo"]) && !empty($_REQUEST["price"])) {
-    $block->addShift($_REQUEST["storeId"], $_REQUEST["weekDay"], $_REQUEST["description"], $_REQUEST["timeFrom"], $_REQUEST["timeTo"], $_REQUEST["price"], $_REQUEST["cutoffTime"]);
+if (empty($request->{"data-target"})) {
+    $request->{"data-target"} = "warehouse";
 }
 
 
-$shifts = $block->getShifts($_REQUEST["storeId"]);
+
+if (!empty($request->deletedId)) {
+    $block->deleteShift($request->deletedId);
+}
+
+if (!empty($request->weekDay) && !empty($request->description) && !empty($request->timeFrom)&& !empty($request->timeTo) && !empty($request->price)) {
+    $block->addShift($request->storeId, $request->weekDay, $request->description, $request->timeFrom, $request->timeTo, $request->price, $request->cutoffTime);
+}
+
+
+$shifts = $block->getShifts($request->storeId);
 ?>
 <link href="http://picup.co.za/assets/css/style.css" rel="stylesheet" />
 <div class="container-fluid">
@@ -62,7 +80,7 @@ $shifts = $block->getShifts($_REQUEST["storeId"]);
                             <?php
                             foreach ($stores as $store) {
                                 ?>
-                                <option value="<?=$store->getId()?>" <?php if ($store->getId() == $_REQUEST["storeId"]) { ?> selected <?php } ?> ><?=$store->getName()?></option>
+                                <option value="<?=$store->getId()?>" <?php if ($store->getId() == $request->storeId) { ?> selected <?php } ?> ><?=$store->getName()?></option>
                                 <?php
                             }
                             ?>
@@ -99,7 +117,7 @@ $shifts = $block->getShifts($_REQUEST["storeId"]);
                     <input class="form-control" type="text" name="price" placeholder="0.00" >
                 </div>
                 <div class="col-md-1">
-                    <label>Cuttoff Time</label>
+                    <label>Cut-off Time</label>
                     <input class="form-control" type="text" name="cutoffTime" placeholder="12:00" >
                 </div>
                 <div class="col-md-1">
@@ -119,7 +137,7 @@ $shifts = $block->getShifts($_REQUEST["storeId"]);
                                 <th class="text-right">Time From</th>
                                 <th class="text-right">Time To</th>
                                 <th class="text-right">Price</th>
-                                <th class="text-right">Cuttoff Time</th>
+                                <th class="text-right">Cut-off Time</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -134,7 +152,7 @@ $shifts = $block->getShifts($_REQUEST["storeId"]);
                                 <td class="text-right"><?=$shift["shift_end"]?></td>
                                 <td class="text-right"><?=number_format($shift["price"], 2)?></td>
                                 <td class="text-right"><?=$shift["cutoff_time"]?></td>
-                                <td><a href="?data-target=buckets&storeId=<?=$_REQUEST["storeId"]?>&deleteId=<?=$shift["id"]?>" class="btn btn-danger">Delete</a></td>
+                                <td><a href="?data-target=buckets&storeId=<?=$request->storeId?>&deleteId=<?=$shift["id"]?>" class="btn btn-danger">Delete</a></td>
                             </tr>
 
                         <?php
@@ -157,7 +175,8 @@ $shifts = $block->getShifts($_REQUEST["storeId"]);
                 $('#'+$(event.target).attr('data-target')).show();
             });
 
-            $('#<?=$_REQUEST["data-target"]?>').show();
+
+            $('#<?=$request->{"data-target"}?>').show();
         });
 
 </script>
