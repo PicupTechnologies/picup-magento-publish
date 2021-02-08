@@ -1,6 +1,5 @@
 {
   "name": "picup/shipping",
-  "version": "1.0.2",
   "description": "Picup Shipping Module",
   "type": "magento2-module",
   "license": "GPL-3.0-or-later",
