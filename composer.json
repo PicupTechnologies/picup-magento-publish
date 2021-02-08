@@ -1,12 +1,9 @@
 {
   "name": "picup/shipping",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Picup Shipping Module",
   "type": "magento2-module",
   "license": "GPL-3.0-or-later",
-  "require": {
-    "php": "~7.1.3|~7.4.0"
-  },
   "autoload": {
     "files": [
       "registration.php"

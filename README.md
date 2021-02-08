@@ -97,5 +97,12 @@ bin/magento cache:flush
 
 After this you can remove the tables which have the picup_ prefix in your database if you don't plan to reinstall.
 
+### Peformance Testing
+
+```
+bin/magento setup:performance:generate-fixtures setup/performance-toolkit/profiles/ce/small.xml
+```
+
+
 
 

@@ -18,13 +18,11 @@ namespace Picup\Shipping\Ui\DataProvider\Product\Form\Modifier;
 
 use Magento\Catalog\Model\Locator\LocatorInterface;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\AbstractModifier;
-use Magento\Framework\Data\Form\Element\Checkbox;
-use Magento\TestFramework\Catalog\Model\Product\Option\DataProvider\Type\RadioButtons;
+use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Ui\Component\Form\Element\CheckboxSet;
 use Magento\Ui\Component\Form\Element\RadioSet;
 use Magento\Ui\Component\Form\Fieldset;
 use Magento\Ui\Component\Form\Field;
-use Magento\Ui\Component\Form\Element\Select;
 use Magento\Ui\Component\Form\Element\DataType\Text;
 
 class PicupFields extends AbstractModifier
@@ -32,15 +30,17 @@ class PicupFields extends AbstractModifier
     private $locator;
     protected $_resourceConnection;
     protected $_objectManager;
+    protected $_serializer;
 
     public function __construct(
-        LocatorInterface $locator
+        LocatorInterface $locator,
+        SerializerInterface $serializer
     )
     {
         $this->locator = $locator;
         $this->_objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         $this->_resourceConnection = $this->_objectManager->get('Magento\Framework\App\ResourceConnection');
-
+        $this->_serializer = $serializer;
     }
 
     /**
@@ -79,7 +79,8 @@ class PicupFields extends AbstractModifier
 
         if (is_array($productData) && !empty($productData)) {
             $productData = $productData[0];
-            $productData["shift_data"] = \Magento\Framework\Serialize\SerializerInterface::unserialize($productData["shift_data"]);
+
+            $productData["shift_data"] = $this->_serializer->unserialize($productData["shift_data"]);
         } else {
             $productData = null;
         }
@@ -94,6 +95,7 @@ class PicupFields extends AbstractModifier
      */
     public function modifyData(array $data)
     {
+
         foreach ($data as $key => $value) {
             if (!isset($value["product"])) continue;
             if (empty($value["product"])) {
@@ -104,11 +106,18 @@ class PicupFields extends AbstractModifier
             } else {
                 $productSku = $value["product"]["sku"];
                 $productData = $this->getProductData($productSku, $this->locator->getStore()->getId());
-                $data[$key]["product"]["picup"]["picup_enabled"] = $productData["picup_enabled"];
-                $data[$key]["product"]["picup"]["picup_width"] = $productData["picup_width"];
-                $data[$key]["product"]["picup"]["picup_height"] = $productData["picup_height"];
-                $data[$key]["product"]["picup"]["picup_length"] = $productData["picup_length"];
-                $data[$key]["product"]["picup"]["picup_shifts"] = $productData["shift_data"];
+                if (!empty($productData)) {
+                    $data[$key]["product"]["picup"]["picup_enabled"] = $productData["picup_enabled"];
+                    $data[$key]["product"]["picup"]["picup_width"] = $productData["picup_width"];
+                    $data[$key]["product"]["picup"]["picup_height"] = $productData["picup_height"];
+                    $data[$key]["product"]["picup"]["picup_length"] = $productData["picup_length"];
+                    $data[$key]["product"]["picup"]["picup_shifts"] = $productData["shift_data"];
+                } else {
+                    $data[$key]["product"]["picup"]["picup_enabled"] = '1';
+                    $data[$key]["product"]["picup"]["picup_width"] = '1';
+                    $data[$key]["product"]["picup"]["picup_height"] = '1';
+                    $data[$key]["product"]["picup"]["picup_length"] = '1';
+                }
             }
         }
 
@@ -257,7 +266,7 @@ class PicupFields extends AbstractModifier
             'arguments' => [
                 'data' =>[
                     'config' => [
-                        'label' => __('Picup Shifts'),
+                        'label' => __('Picup Shifts - configure on the left menu under Picup Admin'),
                         'componentType' => Field::NAME,
                         'formElement' => CheckboxSet::NAME,
                         'dataType' => Text::NAME,

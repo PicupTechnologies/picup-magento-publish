@@ -16,23 +16,25 @@
 
 namespace Picup\Shipping\Observer;
 use Magento\Framework\Event\ObserverInterface;
+use Magento\Framework\Serialize\SerializerInterface;
 
 class SaveProductFields implements ObserverInterface {
 
     private $_request;
     private $_objectManager;
     private $_resourceConnection;
+    protected $_serializer;
 
 
     public function __construct(
-        \Magento\Framework\App\Action\Context $context
-        //other objects
+        \Magento\Framework\App\Action\Context $context,
+        SerializerInterface $serializer
     ) {
         $this->context     = $context;
         $this->_request   = $context->getRequest();
         $this->_objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         $this->_resourceConnection = $this->_objectManager->get('Magento\Framework\App\ResourceConnection');
-        //other objects
+        $this->_serializer = $serializer;
     }
 
     /**
@@ -40,16 +42,23 @@ class SaveProductFields implements ObserverInterface {
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        $params               = $this->_request->getParams();
-
-
+        $params  = $this->_request->getParams();
 
         if (!isset($params["product"]["picup"]["picup_shifts"])) {
             $params["product"]["picup"]["picup_shifts"] = null;
         }
 
+        $product = $observer->getEvent()->getProduct();
+
+        if (!isset($params["product"]["picup"]["picup_enabled"])) {
+            $params["product"]["picup"]["picup_enabled"] = 0;
+            $params["product"]["picup"]["picup_width"] = 1;
+            $params["product"]["picup"]["picup_length"] = 1;
+            $params["product"]["picup"]["picup_height"] = 1;
+
+        }
         ///Save the data
-        $this->saveProductFields($params["product"]["sku"], $params["product"]["picup"]["picup_enabled"], $params["product"]["picup"]["picup_width"], $params["product"]["picup"]["picup_length"], $params["product"]["picup"]["picup_height"], $params["store"], $params["product"]["picup"]["picup_shifts"]);
+        $this->saveProductFields($product->getSku(), $params["product"]["picup"]["picup_enabled"], $params["product"]["picup"]["picup_width"], $params["product"]["picup"]["picup_length"], $params["product"]["picup"]["picup_height"], $product->getStoreId(), $params["product"]["picup"]["picup_shifts"]);
 
     }
 
@@ -57,7 +66,7 @@ class SaveProductFields implements ObserverInterface {
     public function saveProductFields($productSku, $enabled, $width, $length, $height, $storeId, $shiftData) {
         //$shiftData = serialize($shiftData);
 
-        $shiftData = \Magento\Framework\Serialize\SerializerInterface::serialize($shiftData);
+        $shiftData = $this->_serializer->serialize($shiftData);
         $tableName = $this->_resourceConnection->getTableName('picup_products');
         $connection = $this->_resourceConnection->getConnection();
 

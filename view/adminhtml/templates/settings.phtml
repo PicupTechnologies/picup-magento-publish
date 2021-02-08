@@ -20,6 +20,8 @@ $request = $block->getRequest();
 
 $stores = $block->getStores();
 
+
+
 //Get the first store
 if (empty($request->storeId)) {
     foreach ($stores as $store) {
@@ -33,10 +35,8 @@ if (empty($request->{"data-target"})) {
     $request->{"data-target"} = "warehouse";
 }
 
-
-
-if (!empty($request->deletedId)) {
-    $block->deleteShift($request->deletedId);
+if (!empty($request->deleteId)) {
+    $block->deleteShift($request->deleteId);
 }
 
 if (!empty($request->weekDay) && !empty($request->description) && !empty($request->timeFrom)&& !empty($request->timeTo) && !empty($request->price)) {
