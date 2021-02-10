@@ -57,6 +57,11 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
     protected $_customerSession;
 
     /**
+     * @var \Magento\Framework\Message\ManagerInterface
+     */
+    protected $_messageManager;
+
+    /**
      * Picup constructor.
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      * @param \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory
@@ -79,6 +84,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                                 \Magento\Store\Model\StoreManagerInterface $storeManager,
                                 \Magento\Checkout\Model\Cart $cart,
                                 \Magento\Customer\Model\Session $customerSession,
+                                \Magento\Framework\Message\ManagerInterface $messageManager,
 
                                 array $data = [])
     {
@@ -88,6 +94,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $this->_storeManager = $storeManager;
         $this->_cart = $cart;
         $this->_customerSession = $customerSession;
+        $this->_messageManager = $messageManager;
         parent::__construct($scopeConfig, $rateErrorFactory, $logger, $data);
     }
 
@@ -375,7 +382,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                              "email"=> $recEmail,
                              "cellphone" => $recPhone
                          ],
-                         "special_instructions"=> "Green gate, no bell",
+                         "special_instructions"=> "",
                          "parcels" => $this->getParcels($request)
                      ]
                  ],
@@ -407,18 +414,23 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $client = $this->_httpClientFactory->create();
         $client->setUri($detailsUrl);
         $client->setMethod(\Zend_Http_Client::GET);
-        $response = $client->request();
 
-        $details = json_decode($response->getBody());
+        try {
+            $response = $client->request();
 
-        $warehouses = $details->warehouses;
+            $details = json_decode($response->getBody());
 
-        $wId = $this->getConfigData('warehouseId');
-        $this->debugLog("WAREHOUSE NAME", $wId);
-        $this->debugLog("Warehouse Id",$warehouses[$wId]->warehouse_id);
+            $warehouses = $details->warehouses;
 
-        return $warehouses[$wId]->warehouse_id;
+            $wId = $this->getConfigData('warehouseId');
+            $this->debugLog("WAREHOUSE NAME", $wId);
+            $this->debugLog("Warehouse Id", $warehouses[$wId]->warehouse_id);
 
+
+            return $warehouses[$wId]->warehouse_id;
+        } catch (\Exception $exception) {
+            $this->_messageManager->addErrorMessage("Please make sure your warehouses are configured on Picup Shipping module");
+        }
     }
 
 

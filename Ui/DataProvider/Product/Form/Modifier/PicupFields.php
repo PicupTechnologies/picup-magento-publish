@@ -98,7 +98,8 @@ class PicupFields extends AbstractModifier
 
         foreach ($data as $key => $value) {
             if (!isset($value["product"])) continue;
-            if (empty($value["product"])) {
+
+            if (empty($value["product"]["sku"])) {
                 $data[$key]["product"]["picup"]["picup_enabled"] = '1';
                 $data[$key]["product"]["picup"]["picup_width"] = '1';
                 $data[$key]["product"]["picup"]["picup_height"] = '1';

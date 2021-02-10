@@ -56,16 +56,24 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
      */
     protected $_carrier;
 
+    /**
+     * @var \Magento\Framework\Message\ManagerInterface
+     */
+    protected $_messageManager;
+
 
     /**
      * PicupWarehouseList constructor.
      * @param \Magento\Framework\HTTP\ZendClientFactory $httpClientFactory
      * @param \Picup\Shipping\Model\Carrier\PicUp $carrier
      */
-    public function __construct(\Magento\Framework\HTTP\ZendClientFactory $httpClientFactory, \Picup\Shipping\Model\Carrier\PicUp $carrier)
+    public function __construct(\Magento\Framework\HTTP\ZendClientFactory $httpClientFactory,
+                                \Picup\Shipping\Model\Carrier\PicUp $carrier,
+                                \Magento\Framework\Message\ManagerInterface $messageManager)
     {
         $this->_httpClientFactory = $httpClientFactory;
         $this->_carrier = $carrier;
+        $this->_messageManager = $messageManager;
     }
 
 
@@ -97,13 +105,16 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
         $client->setUri($detailsUrl);
 
         $client->setMethod(\Zend_Http_Client::GET);
-        $response = $client->request();
 
+        try {
 
+            $response = $client->request();
+            $details = json_decode($response->getBody());
+            $warehouses = $details->warehouses;
 
-        $details = json_decode($response->getBody());
-
-        $warehouses = $details->warehouses;
+        } catch (\Exception $exception) {
+            $this->_messageManager->addNoticeMessage("Please setup warehouses on your profile");
+        }
 
         $warehouseArray = [];
 
