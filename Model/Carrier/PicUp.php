@@ -4,7 +4,7 @@ use Magento\Quote\Model\Quote\Address\RateRequest;
 use Magento\Shipping\Model\Rate\Result;
 class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \Magento\Shipping\Model\Carrier\CarrierInterface {
 
-    protected $_URI_LIVE = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_LIVE = 'https://picupprod-webapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
 
     protected $_QUOTE_ONE_TO_MANY_LIVE = 'quote/one-to-many';
@@ -62,6 +62,11 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
     protected $_messageManager;
 
     /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    protected $_logger;
+
+    /**
      * Picup constructor.
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      * @param \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory
@@ -95,6 +100,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $this->_cart = $cart;
         $this->_customerSession = $customerSession;
         $this->_messageManager = $messageManager;
+        $this->_logger = $logger;
         parent::__construct($scopeConfig, $rateErrorFactory, $logger, $data);
     }
 
@@ -254,10 +260,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         // determine if logged in, and use logged in user details or
         // get the fields captured on the checkout screen
 
-        $recName = 'Sample Name';
-        $recEmail = 'Sample@email.com';
-        $recPhone = '5556661111';
-
         $destStreet = "";
         $destCity = "";
         $destPostCode = "";
@@ -265,65 +267,30 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
         $isLoggedIn = false;
 
+        $customerName = "Somebody";
+        $customerEmail = "andrevanzuydam@gmail.com";
+        $customerPhone = "0111001000";
+
+
+
+
         if($this->_customerSession->isLoggedIn()){
             //Logged In : Get Default Address
 
-            $recName = $this->_customerSession->getCustomer()->getName();
-            $recEmail =  $this->_customerSession->getCustomer()->getEmail();
-            $recPhone = $this->_customerSession->getCustomer()->getDefaultShippingAddress()->getTelephone();
+            $customerName = $this->_customerSession->getCustomer()->getName();
+            $customerEmail =  $this->_customerSession->getCustomer()->getEmail();
+            $customerPhone = $this->_customerSession->getCustomer()->getDefaultShippingAddress()->getTelephone();
 
             $customerAddress = $this->_customerSession->getCustomer()->getDefaultShippingAddress()->getData();
             $destStreet = $customerAddress['street'];
             $destCity = $customerAddress['city'];
             $destPostCode = $customerAddress['postcode'];
             //$destCountry = "ZA";
-
-
         }
         else
         {
             $isLoggedIn = false;
 
-            $streetAddress = explode ("\n", $rawRequest->getDestStreet());
-            if (!isset($streetAddress[1])) {
-                $destStreet = null;
-                $destCity = null;
-                $destPostCode = null;
-                $destCountry = null;
-
-            }else{
-
-                $vStreet = explode ("\n", $rawRequest->getDestStreet());
-                $vCity = explode ("\n", $rawRequest->getDestCity());
-                $vPostCode = explode ("\n", $rawRequest->getDestPostcode());
-                $vCountry = explode ("\n", $rawRequest->getDestCountryId());
-
-
-                $destStreet = $vStreet[0];
-                if (isset($vStreet[1]))
-                    $destStreet =  $destStreet . ', ' . $vStreet[1] ;
-                if (isset($vStreet[2]))
-                    $destStreet =  $destStreet . ', ' .  $vStreet[2];
-
-                if (isset($vCity)){
-                    $destCity = $vCity[0];
-                } else {
-                    $destCity = ' ';
-                }
-
-                if (!isset($vPostCode)) {
-                    $destPostCode = '0000';
-                } else {
-                    $destPostCode = $vPostCode[0];
-                }
-
-                if (!isset($vCountry)){
-                    $destCountry = ' ';
-                } else {
-                    $destCountry = $vCountry[0];
-                }
-
-            }
 
         }
 
@@ -342,26 +309,24 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                  "is_for_contract_driver" => false,
                  "scheduled_date" => $this->getCollectionDate(true),
                  "courier_costing" => "COL",
-                 "optimize_waypoints" => true,
-                 "courier_costing" => "NONE",
                  "sender" => (object)[
-                    "address" => (object) [
-                        "warehouse_id" => htmlspecialchars((string) $storeWarehouseId),
-                        "unit_no" => htmlspecialchars((string) $this->getConfigData('storeUnitNo')),
-                        "complex" => htmlspecialchars((string) $this->getConfigData('storeComplex')),
-                        "street_or_farm_no" => htmlspecialchars((string) $this->getConfigData('storeStreetOrFarmNo')),
-                        "street_or_farm" => htmlspecialchars((string) $this->getConfigData('storeAddress1')),
-                        "suburb" => htmlspecialchars((string) $this->getConfigData('storeStreetOrFarm')),
-                        "city" => htmlspecialchars((string) $this->getConfigData('storeCity')),
-                        "postal_code" => htmlspecialchars((string) $this->getConfigData('storePostalCode')),
-                        "country" => "South Africa",
-                    ],
+                     "address" => (object) [
+                         "unit_no" => null,
+                         "complex" => null,
+                         "street_or_farm_no" => null,
+                         "street_or_farm" => htmlspecialchars((string) $rawRequest->getDestStreet()),
+                         "suburb" => null,
+                         "city" => htmlspecialchars((string) $rawRequest->getDestCity()),
+                         "postal_code" => htmlspecialchars((string) $rawRequest->getDestPostcode()),
+                         "country" => "South Africa",
+                         "latitude" => null,
+                         "longitude" => null
+                     ],
                      "contact" => (object)[
-                         "name"=> $store->getName(),
-                         "email"=> htmlspecialchars((string) $this->getConfigData('storeEmailAddress')),
-                         "cellphone"=> htmlspecialchars((string) $this->getConfigData('storeMobile'))
-                    ],
-                    "special_instructions"=> ""
+                         "name"=> $customerName,
+                         "email"=> $customerEmail,
+                         "cellphone" => $customerPhone
+                     ]
                  ],
                  "receivers" => [
                      (object)[
@@ -369,18 +334,18 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                              "unit_no" => null,
                              "complex" => null,
                              "street_or_farm_no" => null,
-                             "street_or_farm" => htmlspecialchars((string) $destStreet),
+                             "street_or_farm" => htmlspecialchars((string) $rawRequest->getDestStreet()),
                              "suburb" => null,
-                             "city" => htmlspecialchars((string) $destCity),
-                             "postal_code" => htmlspecialchars((string) $destPostCode),
-                             "country" => htmlspecialchars((string) $destCountry),
+                             "city" => htmlspecialchars((string) $rawRequest->getDestCity()),
+                             "postal_code" => htmlspecialchars((string) $rawRequest->getDestPostcode()),
+                             "country" => "South Africa",
                              "latitude" => null,
                              "longitude" => null
                          ],
                          "contact" => (object)[
-                             "name"=> $recName,
-                             "email"=> $recEmail,
-                             "cellphone" => $recPhone
+                             "name"=> $customerName,
+                             "email"=> $customerEmail,
+                             "cellphone" => $customerPhone
                          ],
                          "special_instructions"=> "",
                          "parcels" => $this->getParcels($request)
@@ -388,11 +353,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                  ],
                  "optimize_waypoints" => true
                 ];
-
-        if ($this->getConfigData("debug")) {
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", date("Y-m-d h:i:s") . " JSON:" . print_r($JSON, 1)."\n", FILE_APPEND);
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", date("Y-m-d h:i:s") . " RAW:\n" . json_encode($JSON)."\n", FILE_APPEND);
-        }
 
         return json_encode($JSON, true);
     }
@@ -402,35 +362,13 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * Gets the current warehouse id linked to the store
      * @return mixed
      */
-    protected function getWarehouseId(){
-
-        if ($this->getConfigData('testMode')) {
-            $detailsUrl = $this->_URI_TEST.$this->getConfigData("apiKeyTest").$this->_DETAILS_TEST;
-        } else {
-            $detailsUrl = $this->_URI_LIVE.$this->getConfigData("apiKey").$this->_DETAILS_LIVE;
-        }
-        $this->debugLog('Details URL', $detailsUrl);
-
-        $client = $this->_httpClientFactory->create();
-        $client->setUri($detailsUrl);
-        $client->setMethod(\Zend_Http_Client::GET);
-
-        try {
-            $response = $client->request();
-
-            $details = json_decode($response->getBody());
-
-            $warehouses = $details->warehouses;
-
-            $wId = $this->getConfigData('warehouseId');
-            $this->debugLog("WAREHOUSE NAME", $wId);
-            $this->debugLog("Warehouse Id", $warehouses[$wId]->warehouse_id);
-
-
-            return $warehouses[$wId]->warehouse_id;
-        } catch (\Exception $exception) {
-            $this->_messageManager->addErrorMessage("Please make sure your warehouses are configured on Picup Shipping module");
-        }
+    protected function getWarehouseId() : string
+    {
+       if (!empty($this->getConfigData('warehouseId'))) {
+            return $this->getConfigData('warehouseId');
+       } else {
+           $this->_messageManager->addErrorMessage("Please make sure your warehouses are configured on Picup Shipping module");
+       }
     }
 
 
@@ -439,7 +377,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * @param false $isQuoteRequest
      * @return string
      */
-    protected function getCollectionDate($isQuoteRequest = false)
+    protected function getCollectionDate($isQuoteRequest = false): string
     {
 
         $collectionDate = date("Y-m-d H:i:s");
@@ -481,7 +419,8 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * @param RateRequest $request
      * @return array
      */
-    function getParcels(RateRequest $request) {
+    function getParcels(RateRequest $request): array
+    {
         $items = $request->getAllItems();
         $parcels = [];
 
@@ -491,7 +430,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                     "size" => "parcel-medium",
                     "reference" => "quote-ref-".$id,
                     "description" => $item->getProduct()->getName(),
-                    "tracking_number" => null
+                    "tracking_number" => "quote-ref-".$id
                 ];
         }
 
@@ -506,25 +445,23 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      */
     function getQuoteOneToMany ($json) {
 
-
         if ($this->getConfigData('testMode')) {
             $url = $this->_URI_TEST.$this->_QUOTE_ONE_TO_MANY_TEST;
         } else {
             $url = $this->_URI_LIVE.$this->_QUOTE_ONE_TO_MANY_LIVE;
         }
 
-        $response = $this->postJSONRequest($url, $json);
+        try {
+            $response = $this->postJSONRequest($url, $json);
 
-        $quotes = json_decode($response->getBody());
+            $this->debugLog("RESPONSE ONE TO MANY", $response);
 
-        if ($this->getConfigData("debug")) {
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", date("Y-m-d h:i:s") . $url . " RESPONSE:\n" . print_r($quotes, 1), FILE_APPEND);
+            $quotes = json_decode($response->getBody());
+        } catch (\Exception $exception) {
+           $quotes = [];
         }
 
         if (isset($quotes->picup) && !empty($quotes->picup)) {
-            if ($this->getConfigData("debug")) {
-                file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", date("Y-m-d h:i:s") . $url . " RESPONSE:\n" . print_r($quotes->picup->service_types, 1), FILE_APPEND);
-            }
 
             //returning only the first/cheapest quote from options provided by picup as per meeting on 2020-08-05
             return $quotes->picup->service_types;
@@ -542,6 +479,8 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
     ///   returns the body of the post response
     ///
     function postJSONRequest($postUrl, $json){
+
+        $this->debugLog("JSON", $json);
 
         $this->debugLog("\nPost URL", $postUrl);
 
@@ -561,9 +500,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
         $response = $client->request();
 
-        if ($this->getConfigData("debug")) {
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", date("Y-m-d h:i:s") . $postUrl . " RESPONSE: \n" . print_r($response->getBody(), 1), FILE_APPEND);
-        }
+        $this->debugLog("response", $response);
         return $response;
     }
 
@@ -575,102 +512,12 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
     public function debugLog ($name = "Debug Msg", $obj){
 
         if ($this->getConfigData("debug")) {
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1) . " \n", FILE_APPEND);
+            //file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1) . " \n", FILE_APPEND);
+            $this->_logger-> debug($name, ["context" => print_r ($obj)]);
         }
     }
 
 
-    ///
-    /// Process Shipping bucket
-    ///
-    /// Parameters:
-    ///
-
-    public function postShippingBucket()
-    {
-
-        $this->debugLog("-----", "INSIDE postShippingBucket");
-
-        if ($this->getConfigData('testMode')) {
-            $postUrl = $this->_URI_TEST.$this->_ADD_TO_BUCKET_LIVE;
-        } else {
-            $postUrl = $this->_URI_LIVE.$this->_ADD_TO_BUCKET_TEST;
-        }
-
-        $this->debugLog("bucket Post URL", $postUrl);
-
-        $bucketJSON = $this->buildBucketJson();
-        //$this.$this->debugLog("strBucketJSON --- \n", $bucketJSON . "   \n");
-
-        $bucketResponse =  $this->postJSONRequest($postUrl, $bucketJSON);
-
-        $this->debugLog("Bucket Response", json_decode($bucketResponse));
-    }
-
-    /**
-     * Builds the bucket JSON body
-     * @return false|string
-     */
-    public function buildBucketJson()
-    {
-
-        $whouse = getWarehouseId();
-        $this->debugLog("buildJSON WArehouse ID", $whouse);
-
-        $strBucketJSON = (object)[
-            "bucket_details" => (object)[
-                "delivery_date" => "2020-08-15",
-                "shift_start" => "09:00",
-                "shift_end" => "17:00",
-                "warehouse_id" => $whouse
-            ],
-            "shipments" => [
-                (object) [
-                    "consignment" => "First Suburb",
-                    "business_reference" => "PICUP ORDER" . date("Ymdhis"),
-                    "address" => (object)[
-                        "address_line_1" => null,
-                        "address_line_2" => null,
-                        "address_line_3" => null,
-                        "address_line_4" => null,
-                        "formatted_address" => "62 Greatmore St, Woodstock, Cape Town, 7915, South Africa",
-                        "latitude" => 33.9292364,
-                        "longitude" => 18.45457669999996,
-                        "street_or_farm_no" => "62",
-                        "street_or_farm" => "Greatmore St",
-                        "suburb" => "Woodstock",
-                        "city" => "Cape Town",
-                        "country" => "South Africa",
-                        "postal_code" => "7915"
-                    ],
-
-                    "contact" =>
-
-                            (object)[
-                                "customer_name" => "Delivery Contact 1",
-                                "customer_phone" => "0821112223",
-                                "email_address" => "integrator@picup.co.za",
-                                "special_instructions" => "Special Instructions go here"
-                            ],
-
-
-                    "parcels" =>
-                        [
-                            (object)[
-                                "size" => "parcel-medium",
-                                "tracking_number" => "777-888-999",
-                                "parcel_reference" => "Parcel Number 1",
-                                "description" => "This is the first parcel"]
-                        ]
-
-                ] //shipment object
-
-            ] //shipments
-
-        ];
-
-        return json_encode($strBucketJSON, true);
-    }
 
     ///
     /// Read the picup_warehouse_shifts table to determine the next available delivery shifts for display in the quotes screen

@@ -12,7 +12,7 @@ namespace Picup\Shipping\Model\Carrier;
 class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
 {
 
-    protected $_URI_LIVE = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_LIVE = 'https://picupprod-webapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
 
     protected $_DETAILS_LIVE = '/details';
@@ -61,6 +61,10 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
      */
     protected $_messageManager;
 
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    protected $_logger;
 
     /**
      * PicupWarehouseList constructor.
@@ -69,11 +73,14 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
      */
     public function __construct(\Magento\Framework\HTTP\ZendClientFactory $httpClientFactory,
                                 \Picup\Shipping\Model\Carrier\PicUp $carrier,
-                                \Magento\Framework\Message\ManagerInterface $messageManager)
+                                \Magento\Framework\Message\ManagerInterface $messageManager,
+                                \Psr\Log\LoggerInterface $logger
+    )
     {
         $this->_httpClientFactory = $httpClientFactory;
         $this->_carrier = $carrier;
         $this->_messageManager = $messageManager;
+        $this->_logger = $logger;
     }
 
 
@@ -114,6 +121,7 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
 
         } catch (\Exception $exception) {
             $this->_messageManager->addNoticeMessage("Please setup warehouses on your profile");
+            $warehouses =[];
         }
 
         $warehouseArray = [];
@@ -123,15 +131,9 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
             $this->debugLog("***** id ***** ", $warehouse->warehouse_id);
             $this->debugLog("***** name ***** ", $warehouse->warehouse_name);
 
-            /*
-            $warehouseArray [] =
-                (object)[
-                    "value" => $warehouse->warehouse_id,
-                    "label" => $warehouse->warehouse_name
-                ];
-            */
 
-            $warehouseArray[] = $warehouse->warehouse_name;
+
+            $warehouseArray[$warehouse->warehouse_id] = $warehouse->warehouse_name;
 
         }
 
@@ -152,12 +154,13 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
     public function toArray()
     {
         return [0 => __('No'), 1 => __('Yes')];
-        $this->debugLog("WAAREHOUSE ARRAY - Create", $warehouseArray);
+        $this->debugLog("WAREHOUSE ARRAY - Create", $warehouseArray);
     }
 
     public function debugLog ($name = "Debug Msg", $obj){
         if ($this->getConfigData("debug")) {
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1), FILE_APPEND);
+            //file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1), FILE_APPEND);
+            $this->_logger-> debug($name, ["context" => print_r ($obj)]);
         }
     }
 }

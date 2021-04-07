@@ -13,10 +13,10 @@
                 <name>PicUp Shipping</name>
                 <title>PicUp Shipping Module</title>
                 <testMode>1</testMode>
-                <apiKey>business-0dc9b695-e124-4a7a-85b2-7f4175660b2c</apiKey>
-                <apiKeyTest>business-0dc9b695-e124-4a7a-85b2-7f4175660b2c</apiKeyTest>
-                <warehouseId></warehouseId>
-                <warehouseName></warehouseName>
+                <apiKey>business-8944f769-bdba-4496-85b3-085c0ce16959</apiKey>
+                <apiKeyTest>business-8944f769-bdba-4496-85b3-085c0ce16959</apiKeyTest>
+                <warehouseId>warehouse-bc447ce9-7ead-476a-892e-0bd56e238a0a</warehouseId>
+                <warehouseName>Picup warehouse</warehouseName>
                 <enableOnDemand>1</enableOnDemand>
                 <sort_order>10</sort_order>
                 <flatRate>9999</flatRate>
