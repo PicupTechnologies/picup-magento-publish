@@ -13,6 +13,7 @@
                 <name>PicUp Shipping</name>
                 <title>PicUp Shipping Module</title>
                 <testMode>1</testMode>
+                <outsideSouthAfrica>1</outsideSouthAfrica>
                 <apiKey>business-8944f769-bdba-4496-85b3-085c0ce16959</apiKey>
                 <apiKeyTest>business-8944f769-bdba-4496-85b3-085c0ce16959</apiKeyTest>
                 <warehouseId>warehouse-bc447ce9-7ead-476a-892e-0bd56e238a0a</warehouseId>

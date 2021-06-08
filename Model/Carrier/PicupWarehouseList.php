@@ -3,6 +3,7 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+
 namespace Picup\Shipping\Model\Carrier;
 
 /**
@@ -12,8 +13,11 @@ namespace Picup\Shipping\Model\Carrier;
 class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
 {
 
-    protected $_URI_LIVE = 'https://picupprod-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_LIVE = 'https://picupafricawebapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
+
+    protected $_URI_LIVE_AFRICA = 'https://beta.picup.africa/v1/integration/';
+    protected $_URI_TEST_AFRICA = 'https://beta.picup.africa/v1/integration/';
 
     protected $_DETAILS_LIVE = '/details';
     protected $_DETAILS_TEST = '/details';
@@ -86,7 +90,7 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
 
     public function getConfigData($field)
     {
-       return $this->_carrier->getConfigData($field);
+        return $this->_carrier->getConfigData($field);
     }
 
 
@@ -99,15 +103,24 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
     {
 
 
-        if (empty($this->getConfigData("apiKeyTest")) || empty($this->getConfigData("apiKey"))  ) return;
+        if (empty($this->getConfigData("apiKeyTest")) || empty($this->getConfigData("apiKey"))) return;
 
         $client = $this->_httpClientFactory->create();
 
-        if ($this->getConfigData('testMode')) {
-            $detailsUrl = $this->_URI_TEST.$this->getConfigData("apiKeyTest").$this->_DETAILS_TEST;
+        if ($this->getConfigData('outsideSouthAfrica')) {
+            if ($this->getConfigData('testMode')) {
+                $detailsUrl = $this->_URI_TEST_AFRICA  . $this->getConfigData("apiKeyTest") . $this->_DETAILS_TEST;
+            } else {
+                $detailsUrl = $this->_URI_LIVE_AFRICA . $this->getConfigData("apiKey") . $this->_DETAILS_LIVE;
+            }
         } else {
-            $detailsUrl = $this->_URI_LIVE.$this->getConfigData("apiKey").$this->_DETAILS_LIVE;
+            if ($this->getConfigData('testMode')) {
+                $detailsUrl = $this->_URI_TEST . $this->getConfigData("apiKeyTest") . $this->_DETAILS_TEST;
+            } else {
+                $detailsUrl = $this->_URI_LIVE  . $this->getConfigData("apiKey") . $this->_DETAILS_LIVE;
+            }
         }
+
 
         $client->setUri($detailsUrl);
 
@@ -120,17 +133,15 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
             $warehouses = $details->warehouses;
 
         } catch (\Exception $exception) {
-            $this->_messageManager->addNoticeMessage("Please setup warehouses on your profile");
-            $warehouses =[];
+            $this->_messageManager->addNoticeMessage("Please setup warehouses on your profile ". $detailsUrl);
+            $warehouses = [];
         }
 
         $warehouseArray = [];
 
-        foreach($warehouses as $warehouse_id => $warehouse)
-        {
+        foreach ($warehouses as $warehouse_id => $warehouse) {
             $this->debugLog("***** id ***** ", $warehouse->warehouse_id);
             $this->debugLog("***** name ***** ", $warehouse->warehouse_name);
-
 
 
             $warehouseArray[$warehouse->warehouse_id] = $warehouse->warehouse_name;
@@ -145,7 +156,6 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
     }
 
 
-
     /**
      * Get options in "key-value" format
      *
@@ -157,10 +167,11 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
         $this->debugLog("WAREHOUSE ARRAY - Create", $warehouseArray);
     }
 
-    public function debugLog ($name = "Debug Msg", $obj){
+    public function debugLog($name = "Debug Msg", $obj)
+    {
         if ($this->getConfigData("debug")) {
             //file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1), FILE_APPEND);
-            $this->_logger-> debug($name, ["context" => print_r ($obj)]);
+            $this->_logger->debug($name, ["context" => print_r($obj)]);
         }
     }
 }

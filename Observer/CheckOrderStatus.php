@@ -19,8 +19,11 @@ use Magento\Framework\Event\ObserverInterface;
 
 class CheckOrderStatus implements ObserverInterface {
 
-    protected $_URI_LIVE = 'https://picupprod-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_LIVE = 'https://picupafricawebapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
+
+    protected $_URI_LIVE_AFRICA = 'https://beta.picup.africa/v1/integration/';
+    protected $_URI_TEST_AFRICA = 'https://beta.picup.africa/v1/integration/';
 
     protected $_ADD_TO_BUCKET_LIVE = 'add-to-bucket';
     protected $_ADD_TO_BUCKET_TEST = 'add-to-bucket';
@@ -106,7 +109,7 @@ class CheckOrderStatus implements ObserverInterface {
                 $this->debugLog("SHIPPING DATE", $shippingDate);
 
 
-                $this->debugLog("Customer Address11", $this->_order->getShippingAddress()->getData());
+                $this->debugLog("Customer Address", $this->_order->getShippingAddress()->getData());
                 $custAddress = $this->_order->getShippingAddress()->getData();
 
                 $this->_customerAddress = $custAddress['street'] . ', ' . $custAddress['city'] . ', ' . $custAddress['postcode'];
@@ -248,10 +251,18 @@ class CheckOrderStatus implements ObserverInterface {
     {
         $this->debugLog("-----", "INSIDE postShippingBucket");
 
-        if ($this->getConfigData('testMode')) {
-            $postUrl = $this->_URI_TEST.$this->_ADD_TO_BUCKET_TEST; //https://picupstaging-webapi.azurewebsites.net/v1/integration/business-152c389a-15ae-443c-9eb0-778e38c876db/add-to-bucket
+        if ($this->getConfigData('outsideSouthAfrica')) {
+            if ($this->getConfigData('testMode')) {
+                $postUrl = $this->_URI_TEST_AFRICA . $this->_ADD_TO_BUCKET_TEST;
+            } else {
+                $postUrl = $this->_URI_LIVE_AFRICA .$this->_ADD_TO_BUCKET_LIVE;
+            }
         } else {
-            $postUrl = $this->_URI_LIVE.$this->_ADD_TO_BUCKET_LIVE;
+            if ($this->getConfigData('testMode')) {
+                $postUrl = $this->_URI_TEST . $this->_ADD_TO_BUCKET_TEST;
+            } else {
+                $postUrl = $this->_URI_LIVE . $this->_ADD_TO_BUCKET_LIVE;
+            }
         }
 
         $bucketJSON = $this->buildBucketJson($collectionDate, $shiftStart,$shiftEnd, $warehouseId);

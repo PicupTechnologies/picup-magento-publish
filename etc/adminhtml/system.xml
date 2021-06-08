@@ -47,6 +47,10 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
 
+                <field id="outsideSouthAfrica" translate="label" type="select" sortOrder="1942" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Outside South Africa</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
 
                 <field id="debug" translate="label" type="select" sortOrder="1950" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Debug</label>

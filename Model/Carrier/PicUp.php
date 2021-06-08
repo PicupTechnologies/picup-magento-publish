@@ -4,8 +4,11 @@ use Magento\Quote\Model\Quote\Address\RateRequest;
 use Magento\Shipping\Model\Rate\Result;
 class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \Magento\Shipping\Model\Carrier\CarrierInterface {
 
-    protected $_URI_LIVE = 'https://picupprod-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_LIVE = 'https://picupafricawebapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
+
+    protected $_URI_LIVE_AFRICA = 'https://beta.picup.africa/v1/integration/';
+    protected $_URI_TEST_AFRICA = 'https://beta.picup.africa/v1/integration/';
 
     protected $_QUOTE_ONE_TO_MANY_LIVE = 'quote/one-to-many';
     protected $_QUOTE_ONE_TO_MANY_TEST = 'quote/one-to-many';
@@ -444,11 +447,18 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * @return |null
      */
     function getQuoteOneToMany ($json) {
-
-        if ($this->getConfigData('testMode')) {
-            $url = $this->_URI_TEST.$this->_QUOTE_ONE_TO_MANY_TEST;
+        if ($this->getConfigData('outsideSouthAfrica')) {
+            if ($this->getConfigData('testMode')) {
+                $url = $this->_URI_TEST_AFRICA . $this->_QUOTE_ONE_TO_MANY_TEST;
+            } else {
+                $url = $this->_URI_LIVE_AFRICA . $this->_QUOTE_ONE_TO_MANY_LIVE;
+            }
         } else {
-            $url = $this->_URI_LIVE.$this->_QUOTE_ONE_TO_MANY_LIVE;
+            if ($this->getConfigData('testMode')) {
+                $url = $this->_URI_TEST .$this->_QUOTE_ONE_TO_MANY_TEST;
+            } else {
+                $url = $this->_URI_LIVE . $this->_QUOTE_ONE_TO_MANY_LIVE;
+            }
         }
 
         try {
