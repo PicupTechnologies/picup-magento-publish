@@ -1,14 +1,40 @@
 <?php
+/**
+ * Copyright 2020  Picup Technology (Pty) Ltd or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the GNU General Public License, Version 3.0 or later(the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  https://opensource.org/licenses/GPL-3.0
+ *
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
 namespace Picup\Shipping\Model\Carrier;
+
+use _HumbugBoxe8a38a0636f4\Nette\Utils\DateTime;
+use Magento\Checkout\Model\Cart;
+use Magento\Customer\Model\Session;
+use Magento\Framework\App\ObjectManager;
+use Magento\Framework\HTTP\ZendClientFactory;
+use Magento\Framework\Message\ManagerInterface;
 use Magento\Quote\Model\Quote\Address\RateRequest;
+use Magento\Quote\Model\Quote\Address\RateResult\MethodFactory;
 use Magento\Shipping\Model\Rate\Result;
+use Magento\Shipping\Model\Rate\ResultFactory;
+use Magento\Store\Model\StoreManagerInterface;
+
 class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \Magento\Shipping\Model\Carrier\CarrierInterface {
 
     protected $_URI_LIVE = 'https://picupafricawebapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
 
-    protected $_URI_LIVE_AFRICA = 'https://beta.picup.africa/v1/integration/';
-    protected $_URI_TEST_AFRICA = 'https://beta.picup.africa/v1/integration/';
+    protected $_URI_LIVE_AFRICA = 'https://picupafrica-webapi.azurewebsites.net/v1/';
+    protected $_URI_TEST_AFRICA = 'https://picupafrica-webapi.azurewebsites.net/v1/';
 
     protected $_QUOTE_ONE_TO_MANY_LIVE = 'quote/one-to-many';
     protected $_QUOTE_ONE_TO_MANY_TEST = 'quote/one-to-many';
@@ -24,43 +50,43 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
 
     /**
-     * @var \Magento\Framework\App\ObjectManager
+     * @var ObjectManager
      */
     protected $_objectManager;
 
     /**
-     * @var \Magento\Shipping\Model\Rate\ResultFactory
+     * @var ResultFactory
      */
     protected $_rateResultFactory;
 
     /**
-     * @var \Magento\Quote\Model\Quote\Address\RateResult\MethodFactory
+     * @var MethodFactory
      */
     protected $_rateMethodFactory;
 
     /**
-     * @var  \Magento\Framework\HTTP\ZendClientFactory
+     * @var  ZendClientFactory
      */
     protected $_httpClientFactory;
 
 
     /**
-     * @var \Magento\Store\Model\StoreManagerInterface
+     * @var StoreManagerInterface
      */
     protected $_storeManager;
 
     /**
-     * @var \Magento\Checkout\Model\Cart
+     * @var Cart
      */
     protected $_cart;
 
     /**
-     * @var \Magento\Customer\Model\Session
+     * @var Session
      */
     protected $_customerSession;
 
     /**
-     * @var \Magento\Framework\Message\ManagerInterface
+     * @var ManagerInterface
      */
     protected $_messageManager;
 
@@ -69,31 +95,34 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      */
     protected $_logger;
 
+    protected $checkOut;
+
     /**
      * Picup constructor.
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      * @param \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory
      * @param \Psr\Log\LoggerInterface $logger
-     * @param \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory
-     * @param \Magento\Quote\Model\Quote\Address\RateResult\MethodFactory $rateMethodFactory
-     * @param \Magento\Framework\HTTP\ZendClientFactory $httpClientFactory
-     * @param \Magento\Store\Model\StoreManagerInterface $storeManager
-     * @param \Magento\Checkout\Model\Cart $cart
-     * @param \Magento\Customer\Model\Session $customerSession,
+     * @param ResultFactory $rateResultFactory
+     * @param MethodFactory $rateMethodFactory
+     * @param ZendClientFactory $httpClientFactory
+     * @param StoreManagerInterface $storeManager
+     * @param Cart $cart
+     * @param Session $customerSession ,
+     * @param ManagerInterface $messageManager
+     * @param \Magento\Checkout\Model\Session $checkoutSession
      * @param array $data
      */
-
     public function __construct(\Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
                                 \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory,
                                 \Psr\Log\LoggerInterface $logger,
-                                \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory,
-                                \Magento\Quote\Model\Quote\Address\RateResult\MethodFactory $rateMethodFactory,
-                                \Magento\Framework\HTTP\ZendClientFactory $httpClientFactory,
-                                \Magento\Store\Model\StoreManagerInterface $storeManager,
-                                \Magento\Checkout\Model\Cart $cart,
-                                \Magento\Customer\Model\Session $customerSession,
-                                \Magento\Framework\Message\ManagerInterface $messageManager,
-
+                                ResultFactory $rateResultFactory,
+                                MethodFactory $rateMethodFactory,
+                                ZendClientFactory $httpClientFactory,
+                                StoreManagerInterface $storeManager,
+                                Cart $cart,
+                                Session $customerSession,
+                                ManagerInterface $messageManager,
+                                \Magento\Checkout\Model\Session $checkoutSession,
                                 array $data = [])
     {
         $this->_rateResultFactory = $rateResultFactory;
@@ -104,6 +133,11 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $this->_customerSession = $customerSession;
         $this->_messageManager = $messageManager;
         $this->_logger = $logger;
+        $this->checkOut = $checkoutSession;
+        $this->_objectManager = ObjectManager::getInstance();
+        $this->resource = $this->_objectManager->get('Magento\Framework\App\ResourceConnection');
+        $this->connection = $this->resource->getConnection();
+
         parent::__construct($scopeConfig, $rateErrorFactory, $logger, $data);
     }
 
@@ -117,100 +151,276 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      */
     public function collectRates(RateRequest $request)
     {
-        if (!$this->getConfigFlag('active')) {
+        if (!$this->getConfigFlag('active') || empty($request->getDestPostcode())) {
             return false;
         }
 
+        try {
 
-        $result = $this->_rateResultFactory->create();
+            $hasResult = false;
 
-        $json = $this->getQuoteOneToManyJSON($request);
+            $store = $this->_storeManager->getStore($request->getStoreId());
 
-        $quotes = $this->getQuoteOneToMany ($json);
+            $this->_storeId = $store->getId();
+            $this->debugLog("Store ID --", $this->_storeId);
 
-        $onDemand = $this->getConfigData('enableOnDemand');
-        $this->debugLog("On Demand", $onDemand);
+            $result = $this->_rateResultFactory->create();
+            $onDemand = $this->getConfigData('enableOnDemand');
+            $freeShipping = $this->getConfigData('enableFreeShipping');
+
+            $quote = $this->checkOut->getQuote();
 
 
-        /// Only get quotes of the OnDemand is active in picup settings
-        if ($onDemand == 1){
-            if(!empty($quotes)) {
-                foreach ($quotes as $id => $quote) {
+            /// Only get quotes of the OnDemand is active in picup settings
+            if ($onDemand == 1 && !empty($request->getDestPostcode())) {
+                $this->debugLog("On Demand", $onDemand);
+                $json = $this->getQuoteOneToManyJSON($request);
+                $quotes = $this->getQuoteOneToMany($json);
+                if (!empty($quotes)) {
+                    foreach ($quotes as $id => $quote) {
 
-                    $this->debugLog("Carrier Title", $this->getConfigData('name'));
-                    $moduleCode = $this->_code;
+                        $this->debugLog("Carrier Title", $this->getConfigData('name'));
 
-                    //Replace 'vehicle-motorcycle' with 'On Demand: Motorcycle
-                    $onDemandDesc = str_replace('vehicle-', 'On Demand: ', $quote->description);
+                        //Replace 'vehicle-motorcycle' with 'On Demand: Motorcycle
+                        $onDemandDesc = str_replace('vehicle-', 'On Demand: ', $quote->description);
 
-                    $method = $this->_rateMethodFactory->create();
-                    $method->setCarrier($this->_code);
-                    $method->setCarrierTitle('On Demand - Picup');
-                    $method->setMethod($quote->description);
-                    $method->setMethodTitle($onDemandDesc);
-                    $method->setPrice($quote->price_ex_vat);
-                    $method->setCost($quote->price_ex_vat);
-                    $result->append($method);
-                    break; //only quoting on the cheapest quote
+                        $method = $this->_rateMethodFactory->create();
+                        $method->setCarrier($this->_code);
+                        $method->setCarrierTitle('On Demand - Picup');
+                        $method->setMethod($quote->description);
+                        $method->setMethodTitle($onDemandDesc);
+                        $method->setPrice($quote->price_ex_vat);
+                        $method->setCost($quote->price_ex_vat);
+                        $result->append($method);
+                        $hasResult = true;
+                        break; //only quoting on the cheapest quote
+                    }
                 }
             }
-        }
 
-        /*
-         *  Generating Picup Bucket based pricing
-         */
 
-        $this->debugLog("\n AVAILABLE SHIFTS", ">>>>>>> Start >>>>>>>>\n");
-        $shifts = $this->getAvailableShifts();
-        $this->debugLog("\n AVAILABLE SHIFTS", "<<<<<<< End <<<<<<<<<<\n");
+            /// Only get quotes of the OnDemand is active in picup settings
+            if ($freeShipping == 1) {
+                $freeShippingThreshold = (int)$this->getConfigData('freeShippingThreshold');
+                $total = $quote->getGrandTotal();
 
-        $weekDays = [
-            "Monday" => 1,
-            "Tuesday" => 2,
-            "Wednesday" => 3,
-            "Thursday" => 4,
-            "Friday" => 5,
-            "Saturday" => 6,
-            "Sunday" =>7
-        ];
-        $currentDayInt =  $weekDays[date("l")];
-
-        foreach($shifts as $id => $shift){
-
-            $this->debugLog("\nShift Description", $shift["description"]);
-
-            $dDayInt =  $shift["delivery_day"];
-            $diffDaysInt = $dDayInt - $currentDayInt;
-
-            if ($diffDaysInt < 0){
-                $diffDaysInt = $diffDaysInt + 7;
+                if (!empty($freeShippingThreshold) && ($total >= $freeShippingThreshold)) {
+                    $method = $this->_rateMethodFactory->create();
+                    $method->setCarrier($this->_code);
+                    $method->setCarrierTitle('Free Shipping - Picup');
+                    $method->setMethod("Picup Free Shipping");
+                    $method->setMethodTitle("Free Shipping");
+                    $method->setPrice(0);
+                    $method->setCost(0);
+                    $result->append($method);
+                    $hasResult = true;
+                }
             }
-            $this->debugLog("\nDays Difference", $diffDaysInt);
 
-            $finalDelDate = strtotime("+$diffDaysInt"." days", strtotime(date("Y/m/d")));
-            $delDateString = date("Y-m-d", $finalDelDate);
-            $descString = $delDateString . " - " . $shift["description"] . ". ";
-            $this->debugLog("\nFormatted Shift Description", $descString);
+            /*
+             *  Generating Picup Bucket based pricing
+             */
 
-            $this->debugLog("\nShift Description", $shift["description"] . " on $finalDelDate.");
+            $this->debugLog("\n AVAILABLE ZONES", ">>>>>>> Start >>>>>>>>\n");
+            $zones = $this->getAvailableZones();
+            $this->debugLog("\n AVAILABLE ZONES", "<<<<<<< End <<<<<<<<<<\n");
 
-            $method1 = $this->_rateMethodFactory->create();
-            $method1->setCarrier($this->_code);
-            $method1->setCarrierTitle($this->getConfigData('name'));
-            $method1->setMethod($shift["description"]);
-            $method1->setMethodTitle($descString);
-            $method1->setPrice($shift["price"]);
-            $method1->setCost($shift["price"]);
-            $result->append($method1);
+
+
+            $zonePostalCodes = [];
+            $sortedShifts = [];
+            $sortedShiftsValid = [];
+
+            //global next day var
+            $nextDay = date_create(date("Y-m-d"));
+            $nextDay = date_add($nextDay, date_interval_create_from_date_string("1 days"));
+
+
+            if (!empty($zones)) {
+                if (!empty($request->getDestPostcode())) {
+                    foreach ($zones as $zid => $zone) {
+                        $zonePostalCodes[$zone["description"]] = $zone["postal_codes"];
+
+                        //Skip ignored postal codes
+                        if (strpos($zone["postal_codes_ignore"], $request->getDestPostcode()) === true) {
+                            continue;
+                        }
+
+
+                        //Cutoff hours need to be subtracted off start time
+                        $cutOffTime = new \DateTime(date("Y-m-d") . " " . $zone["shift_start"]);
+                        $cutOffTime->sub(new \DateInterval("PT{$zone["cutoff_hours"]}H"));
+
+                        $currentTime = new \DateTime();
+
+
+                        if ($currentTime < $cutOffTime && $zone["show_zone"] == 1) {
+                            //$zonePostalCodes[$zone["description"]] = $zone["postal_codes"];
+                            $this->debugLog("\nZone Description", $zone["description"] . " " . $cutOffTime->format("Y-m-d H:i:s"));
+                            if (strpos($zone["postal_codes"], $request->getDestPostcode()) !== false || trim($zone["postal_codes"]) == "") {
+                                //same day
+                                $finalDelDate = date("Y-m-d");
+                                if (strpos($zone["description"], "{date}") !== false) {
+                                    $zone["description"] = str_replace('{date}', date("Y-m-d"), $zone["description"]);
+                                }
+
+                                //next day
+                                if (strpos($zone["description"], "{date+1}") !== false) {
+                                    $finalDelDate = date_format($nextDay,"Y-m-d");
+                                    $zone["description"] = str_replace('{date+1}', date_format($nextDay,"Y-m-d"), $zone["description"]);
+                                }
+
+                                $method2 = $this->_rateMethodFactory->create();
+                                $method2->setCarrier($this->_code);
+                                $method2->setCarrierTitle($this->getConfigData('name'));
+                                $method2->setMethod($zone["description"]);
+                                $method2->setMethodTitle($zone["description"]);
+                                $method2->setPrice($zone["price"]);
+                                $method2->setCost($zone["price"]);
+
+                                $sortedShifts[$finalDelDate] = $method2;
+                                $sortedShiftsValid[$finalDelDate] = "o";
+
+                            }
+                        }
+                    }
+                } else {
+                    foreach ($zones as $zid => $zone) {
+                        $zonePostalCodes[$zone["description"]] = $zone["postal_codes"];
+                    }
+                }
+            }
+
+
+            $this->debugLog("\n AVAILABLE SHIFTS", ">>>>>>> Start >>>>>>>>\n");
+            $shifts = $this->getAvailableShifts();
+            $this->debugLog("\n AVAILABLE SHIFTS", "<<<<<<< End <<<<<<<<<<\n");
+
+            $weekDays = [
+                "Monday" => 1,
+                "Tuesday" => 2,
+                "Wednesday" => 3,
+                "Thursday" => 4,
+                "Friday" => 5,
+                "Saturday" => 6,
+                "Sunday" => 7
+            ];
+
+            $currentDayInt = $weekDays[date("l")];
+
+            if (!empty($shifts)) {
+
+                foreach ($shifts as $sid => $shift) {
+                    $this->debugLog("\nShift Description", $shift["description"]);
+
+                    $dDayInt = $shift["delivery_day"]; //day of delivery
+                    $diffDaysInt = $dDayInt - $currentDayInt;
+
+                    if ($diffDaysInt < 0) {
+                        $diffDaysInt = $diffDaysInt + 7;
+                    }
+
+                    $this->debugLog("\nDays Difference", $diffDaysInt);
+
+
+                    $finalDelDate = strtotime("+$diffDaysInt" . " days", strtotime(date("Y/m/d")));
+
+                    $delDateString = date("Y-m-d", $finalDelDate);
+                    $descString = $delDateString . " - " . $shift["description"];
+                    $this->debugLog("\nFormatted Shift Description", $descString);
+
+
+                    $this->debugLog("\nShift Description", $shift["description"] . " on $finalDelDate.");
+
+                    //See if we have a zone applied and used the postal codes for that zone
+                    $picupZones = explode(",", $shift["picup_zones"]);
+
+                    $this->debugLog("Zones", $picupZones);
+
+                    $canAdd = true;
+                    if (!empty($picupZones)) {
+                        $zipCodes = "";
+                        foreach ($picupZones as $pid => $picupZone) {
+                            if (!empty($picupZone)) {
+                                if (isset($zonePostalCodes[trim($picupZone)])) {
+                                    $zipCodes .= $zonePostalCodes[trim($picupZone)];
+                                }
+                            }
+                        }
+
+                        if (strpos($zipCodes, $request->getDestPostcode()) === false && trim($zipCodes) !== "") {
+                            $canAdd = false;
+                        }
+                    }
+
+
+                    $deliveryDate = new \DateTime($delDateString);
+                    $endShiftTime = new \DateTime(date("Y-m-d") . " " . $shift["shift_end"]);
+
+                    if ($canAdd) {
+                        //Check if same day for cut off time
+                        if ($deliveryDate->format("Y-m-d") == $endShiftTime->format("Y-m-d")) {
+                            $currentTime = new \DateTime();
+
+                            try {
+                                $cutOffTime = new \DateTime(date("Y-m-d") . " " . $shift["shift_start"]);
+                                $cutOffTime->sub(new \DateInterval("PT{$shift["cutoff_time"]}H"));
+                            } catch (\Exception $exception) {
+                                $canAdd = false;
+                            }
+
+                            if ($currentTime < $cutOffTime) {
+                                $finalDelDate = date("Y-m-d");
+                            } else {
+                                $finalDelDate = strtotime("+7 days", strtotime(date("Y-m-d")));
+                                $delDateString = date("Y-m-d", $finalDelDate);
+                                $descString = $delDateString . " - " . $shift["description"];
+                                $canAdd = true;
+                            }
+                        }
+
+                        if ($delDateString === date_format($currentTime, "Y-m-d")) {
+                            $descString = $shift["same_day_caption"];
+                        }
+
+                        if ($delDateString === date_format($nextDay, "Y-m-d")) {
+                            $descString = $shift["next_day_caption"];
+                        }
+
+                        if ($canAdd) {
+                            $method1 = $this->_rateMethodFactory->create();
+                            $method1->setCarrier($this->_code);
+                            $method1->setCarrierTitle($this->getConfigData('name'));
+                            $method1->setMethod($shift["description"]);
+                            $method1->setMethodTitle($descString);
+                            $method1->setPrice($shift["price"]);
+                            $method1->setCost($shift["price"]);
+
+
+                            $sortedShifts[$delDateString] = $method1;
+                            $sortedShiftsValid[$finalDelDate] = "o";
+                        }
+                    }
+                }
+
+               //array_unique($sortedShifts);
+
+                ksort($sortedShifts);
+                ksort($sortedShiftsValid);
+
+                foreach ($sortedShifts as $sortedShift) {
+                    $result->append($sortedShift);
+                    $hasResult = true;
+                }
+            }
+
+            if (!$hasResult) return false;
+
+            return $result;
+        }  catch(\Exception $exception) {
+            $this->debugLog("Exception", $exception->getMessage());
+            return false;
         }
-
-        /*
-        $this->debugLog("-----", "Calling Bucket Code");
-        $this->postShippingBucket();
-        $this->debugLog("-----", "Ending Bucket Code");
-        */
-
-        return $result;
     }
 
     /**
@@ -219,11 +429,10 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * @param $days
      * @return false|string
      */
-    public function addDayswithdate($date,$days){
-
+    public function addDayswithdate($date,$days)
+    {
         $date = strtotime("+".$days." days", strtotime($date));
         return  date("Y-m-d", $date);
-
     }
 
     /**
@@ -253,48 +462,29 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * @throws \Magento\Framework\Exception\LocalizedException
      * @throws \Magento\Framework\Exception\NoSuchEntityException
      */
-
     protected function getQuoteOneToManyJSON(RateRequest $request)
     {
+        $destCountry = "South Africa"; //Need to see what to do about this when not south africa
 
-        $rawRequest = $request;
-
-        // customer info fields required for post message of quote
-        // determine if logged in, and use logged in user details or
-        // get the fields captured on the checkout screen
-
-        $destStreet = "";
-        $destCity = "";
-        $destPostCode = "";
-        $destCountry = "";
-
-        $isLoggedIn = false;
-
-        $customerName = "Somebody";
-        $customerEmail = "andrevanzuydam@gmail.com";
+        $customerName = "Guest";
+        $customerEmail = "info@picup.co.za";
         $customerPhone = "0111001000";
 
-
-
-
         if($this->_customerSession->isLoggedIn()){
-            //Logged In : Get Default Address
-
             $customerName = $this->_customerSession->getCustomer()->getName();
             $customerEmail =  $this->_customerSession->getCustomer()->getEmail();
             $customerPhone = $this->_customerSession->getCustomer()->getDefaultShippingAddress()->getTelephone();
-
             $customerAddress = $this->_customerSession->getCustomer()->getDefaultShippingAddress()->getData();
+
             $destStreet = $customerAddress['street'];
             $destCity = $customerAddress['city'];
             $destPostCode = $customerAddress['postcode'];
-            //$destCountry = "ZA";
         }
         else
         {
-            $isLoggedIn = false;
-
-
+            $destStreet = $request->getDestStreet();
+            $destCity = $request->getDestCity();
+            $destPostCode = $request->getDestPostcode();
         }
 
         $store = $this->_storeManager->getStore($request->getStoreId());
@@ -302,60 +492,51 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $this->_storeId = $store->getId();
         $this->debugLog("Store ID --", $this->_storeId);
 
-        $this->debugLog("Warehouse ID", $this->getConfigData('warehouseId'));
-
-        $storeWarehouseId = $this->getWarehouseId();
-
-
         $JSON = (object)[
-                 "customer_ref" => $store->getName()." PICUP QUOTE" . date("Ymdhis"),
-                 "is_for_contract_driver" => false,
-                 "scheduled_date" => $this->getCollectionDate(true),
-                 "courier_costing" => "COL",
-                 "sender" => (object)[
-                     "address" => (object) [
-                         "unit_no" => null,
-                         "complex" => null,
-                         "street_or_farm_no" => null,
-                         "street_or_farm" => htmlspecialchars((string) $rawRequest->getDestStreet()),
-                         "suburb" => null,
-                         "city" => htmlspecialchars((string) $rawRequest->getDestCity()),
-                         "postal_code" => htmlspecialchars((string) $rawRequest->getDestPostcode()),
-                         "country" => "South Africa",
-                         "latitude" => null,
-                         "longitude" => null
-                     ],
-                     "contact" => (object)[
-                         "name"=> $customerName,
-                         "email"=> $customerEmail,
-                         "cellphone" => $customerPhone
-                     ]
-                 ],
-                 "receivers" => [
-                     (object)[
-                         "address" => (object) [
-                             "unit_no" => null,
-                             "complex" => null,
-                             "street_or_farm_no" => null,
-                             "street_or_farm" => htmlspecialchars((string) $rawRequest->getDestStreet()),
-                             "suburb" => null,
-                             "city" => htmlspecialchars((string) $rawRequest->getDestCity()),
-                             "postal_code" => htmlspecialchars((string) $rawRequest->getDestPostcode()),
-                             "country" => "South Africa",
-                             "latitude" => null,
-                             "longitude" => null
-                         ],
-                         "contact" => (object)[
-                             "name"=> $customerName,
-                             "email"=> $customerEmail,
-                             "cellphone" => $customerPhone
-                         ],
-                         "special_instructions"=> "",
-                         "parcels" => $this->getParcels($request)
-                     ]
-                 ],
-                 "optimize_waypoints" => true
-                ];
+            "customer_ref" => $store->getName()." PICUP QUOTE" . date("Ymdhis"),
+            "is_for_contract_driver" => false,
+            "scheduled_date" => $this->getCollectionDate(true),
+            "courier_costing" => "COL",
+            "sender" => (object)[
+                "address" => (object) [
+                    "unit_no" => null,
+                    "complex" => null,
+                    "street_or_farm_no" => null,
+                    "street_or_farm" => htmlspecialchars((string) $destStreet),
+                    "suburb" => null,
+                    "city" => htmlspecialchars((string) $destCity),
+                    "postal_code" => htmlspecialchars((string) $destPostCode),
+                    "country" => htmlspecialchars($destCountry)
+                ],
+                "contact" => (object)[
+                    "name"=> $customerName,
+                    "email"=> $customerEmail,
+                    "cellphone" => $customerPhone
+                ]
+            ],
+            "receivers" => [
+                (object)[
+                    "address" => (object) [
+                        "unit_no" => null,
+                        "complex" => null,
+                        "street_or_farm_no" => null,
+                        "street_or_farm" => htmlspecialchars((string) $destStreet),
+                        "suburb" => null,
+                        "city" => htmlspecialchars((string) $destCity),
+                        "postal_code" => htmlspecialchars((string) $destPostCode),
+                        "country" => htmlspecialchars($destCountry)
+                    ],
+                    "contact" => (object)[
+                        "name"=> $customerName,
+                        "email"=> $customerEmail,
+                        "cellphone" => $customerPhone
+                    ],
+                    "special_instructions"=> "",
+                    "parcels" => $this->getParcels($request)
+                ]
+            ],
+            "optimize_waypoints" => true
+        ];
 
         return json_encode($JSON, true);
     }
@@ -367,11 +548,12 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      */
     protected function getWarehouseId() : string
     {
-       if (!empty($this->getConfigData('warehouseId'))) {
+        if (!empty($this->getConfigData('warehouseId'))) {
             return $this->getConfigData('warehouseId');
-       } else {
-           $this->_messageManager->addErrorMessage("Please make sure your warehouses are configured on Picup Shipping module");
-       }
+        } else {
+            $this->_messageManager->addErrorMessage("Please make sure your warehouses are configured on Picup Shipping module");
+        }
+        return "";
     }
 
 
@@ -382,7 +564,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      */
     protected function getCollectionDate($isQuoteRequest = false): string
     {
-
         $collectionDate = date("Y-m-d H:i:s");
         $this->debugLog("collectionDate", $collectionDate);
 
@@ -406,6 +587,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      */
     function next_business_day($date) {
         $add_day = 0;
+
         do {
             $add_day++;
             $new_date = date('Y-m-d', strtotime("$date +$add_day Days"));
@@ -414,8 +596,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
         return $new_date;
     }
-
-
 
     /**
      * Gets the parcel size and number of items
@@ -439,7 +619,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
         return $parcels;
     }
-
 
     /**
      * Processes Picup Quotes for One to Many
@@ -468,7 +647,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
             $quotes = json_decode($response->getBody());
         } catch (\Exception $exception) {
-           $quotes = [];
+            $quotes = [];
         }
 
         if (isset($quotes->picup) && !empty($quotes->picup)) {
@@ -481,13 +660,13 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         }
     }
 
-    ///
-    /// Posts the JSON Request
-    ///
-    /// Parameters : $postUrl = The complete post url ()
-    ///              $json = the body of the post request
-    ///   returns the body of the post response
-    ///
+
+    /**
+     * Posts the JSON request
+     * @param $postUrl
+     * @param $json
+     * @return mixed
+     */
     function postJSONRequest($postUrl, $json){
 
         $this->debugLog("JSON", $json);
@@ -495,7 +674,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $this->debugLog("\nPost URL", $postUrl);
 
         $client = $this->_httpClientFactory->create();
-
         $client->setUri($postUrl);
         $client->setRawData(utf8_encode($json));
         $client->setMethod(\Zend_Http_Client::POST);
@@ -511,6 +689,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $response = $client->request();
 
         $this->debugLog("response", $response);
+
         return $response;
     }
 
@@ -519,22 +698,18 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
      * @param string $name
      * @param $obj
      */
-    public function debugLog ($name = "Debug Msg", $obj){
-
+    public function debugLog ($name = "Debug Msg", $obj=[]){
         if ($this->getConfigData("debug")) {
-            //file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1) . " \n", FILE_APPEND);
-            $this->_logger-> debug($name, ["context" => print_r ($obj)]);
+            $this->_logger->debug($name, ["context" => print_r ($obj, 1)]);
         }
     }
 
-
-
-    ///
-    /// Read the picup_warehouse_shifts table to determine the next available delivery shifts for display in the quotes screen
-    /// Weekday ID
-    ///
-    public function getAvailableShifts(){
-
+    /**
+     * Check the tables for the next shift
+     * @return mixed
+     */
+    public function getAvailableShifts()
+    {
         $weekDays = [
             "Monday" => 1,
             "Tuesday" => 2,
@@ -548,22 +723,37 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         $currentWeekDay = $weekDays[date("l")];
 
         $this->debugLog("Current Weekday", $currentWeekDay);
-
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $resource = $objectManager->get('Magento\Framework\App\ResourceConnection');
-        $connection = $resource->getConnection();
-        $tableName = $resource->getTableName('picup_warehouse_shifts');
-
+        $tableName = $this->resource->getTableName('picup_warehouse_shifts');
         $this->debugLog("store id", $this->_storeId);
-
         //Select Data from table
         $sql = "Select * FROM " . $tableName . " WHERE store_id = " . $this->_storeId;
         $this->debugLog("Shift SQL", $sql);
+        $connection = $this->resource->getConnection();
+        $result = $this->connection->fetchAll($sql); // gives associated array, table fields as key in array.
+        $this->debugLog("Record Count", count($result));
+
+        return $result;
+    }
+
+
+    /**
+     * Check the tables for the next zone
+     * @return mixed
+     */
+    public function getAvailableZones()
+    {
+        $tableName = $this->resource->getTableName('picup_warehouse_zones');
+        $this->debugLog("zones for store id", $this->_storeId);
+
+        $sql = "Select * FROM " . $tableName . " WHERE store_id = " . $this->_storeId;
+        $this->debugLog("Zone SQL", $sql);
+
+        $connection = $this->resource->getConnection();
         $result = $connection->fetchAll($sql); // gives associated array, table fields as key in array.
 
         $this->debugLog("Record Count", count($result));
 
         return $result;
-
     }
 }
+

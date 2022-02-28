@@ -18,6 +18,8 @@ namespace Picup\Shipping\Ui\DataProvider\Product\Form\Modifier;
 
 use Magento\Catalog\Model\Locator\LocatorInterface;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\AbstractModifier;
+use Magento\Framework\App\ObjectManager;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Ui\Component\Form\Element\CheckboxSet;
 use Magento\Ui\Component\Form\Element\RadioSet;
@@ -27,19 +29,33 @@ use Magento\Ui\Component\Form\Element\DataType\Text;
 
 class PicupFields extends AbstractModifier
 {
+    /**
+     * @var LocatorInterface
+     */
     private $locator;
+
+    /**
+     * @var ResourceConnection
+     */
     protected $_resourceConnection;
+
+    /**
+     * @var ObjectManager
+     */
     protected $_objectManager;
+
+    /**
+     * @var SerializerInterface
+     */
     protected $_serializer;
 
     public function __construct(
         LocatorInterface $locator,
-        SerializerInterface $serializer
-    )
-    {
+        SerializerInterface $serializer,
+        ResourceConnection $resourceConnection
+    ) {
         $this->locator = $locator;
-        $this->_objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $this->_resourceConnection = $this->_objectManager->get('Magento\Framework\App\ResourceConnection');
+        $this->_resourceConnection = $resourceConnection;
         $this->_serializer = $serializer;
     }
 
@@ -48,16 +64,19 @@ class PicupFields extends AbstractModifier
      * @param $storeId
      * @return mixed
      */
-    public function getShifts($storeId) {
+    public function getShifts($storeId)
+    {
         if ($storeId == 0) {
             //All stores
             $where = "";
         } else {
             $where = "WHERE store_id = " . $storeId;
         }
+
         $tableName = $this->_resourceConnection->getTableName('picup_warehouse_shifts');
         $sql = "Select * FROM " . $tableName . " {$where}";
         $connection = $this->_resourceConnection->getConnection();
+
         return $connection->fetchAll($sql);
     }
 
@@ -74,8 +93,6 @@ class PicupFields extends AbstractModifier
         $sql = "Select * FROM " . $tableName . " {$where}";
         $connection = $this->_resourceConnection->getConnection();
         $productData = $connection->fetchAll($sql);
-
-
 
         if (is_array($productData) && !empty($productData)) {
             $productData = $productData[0];

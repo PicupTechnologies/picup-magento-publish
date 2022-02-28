@@ -25,7 +25,6 @@ class SaveProductFields implements ObserverInterface {
     private $_resourceConnection;
     protected $_serializer;
 
-
     public function __construct(
         \Magento\Framework\App\Action\Context $context,
         SerializerInterface $serializer

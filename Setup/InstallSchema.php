@@ -38,127 +38,202 @@ class InstallSchema implements InstallSchemaInterface
         /**
          * Create table 'picup_warehouse_shifts'
          */
-        $table = $installer->getConnection()->newTable(
-            $installer->getTable('picup_warehouse_shifts')
-        )->addColumn(
-            'id',
-            \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
-            null,
-            ['identity' => true, 'nullable' => false, 'primary' => true],
-            'ID'
-        )->addColumn(
-            'store_id',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Store ID'
-        )->addColumn(
-            'delivery_day',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Delivery Day'
-        )->addColumn(
-            'shift_start',
-            \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
-            10,
-            ['nullable' => false],
-            'Shift Start'
-        )->addColumn(
-            'shift_end',
-            \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
-            10,
-            ['nullable' => false],
-            'Shift End'
-        )->addColumn(
-            'cutoff_time',
-            \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
-            10,
-            ['nullable' => false],
-            'Cutoff Time'
-        )->addColumn(
-            'description',
-            \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
-            255,
-            ['nullable' => false],
-            'Description'
-        )->addColumn(
-            'price',
-            \Magento\Framework\DB\Ddl\Table::TYPE_NUMERIC,
-            null,
-            ['nullable' => false],
-            'Price'
-        )->addIndex(
-            $setup->getIdxName(
-                $installer->getTable('picup_warehouse_shifts'),
+        if (!$installer->tableExists("picup_warehouse_shifts")) {
+            $table = $installer->getConnection()->newTable(
+                $installer->getTable('picup_warehouse_shifts')
+            )->addColumn(
+                'id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+                null,
+                ['identity' => true, 'nullable' => false, 'primary' => true],
+                'ID'
+            )->addColumn(
+                'store_id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Store ID'
+            )->addColumn(
+                'delivery_day',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Delivery Day'
+            )->addColumn(
+                'shift_start',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                10,
+                ['nullable' => false],
+                'Shift Start'
+            )->addColumn(
+                'shift_end',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                10,
+                ['nullable' => false],
+                'Shift End'
+            )->addColumn(
+                'cutoff_time',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                10,
+                ['nullable' => false],
+                'Cutoff Time'
+            )->addColumn(
+                'description',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                255,
+                ['nullable' => false],
+                'Description'
+            )->addColumn(
+                'price',
+                \Magento\Framework\DB\Ddl\Table::TYPE_NUMERIC,
+                null,
+                ['nullable' => false],
+                'Price'
+            )->addIndex(
+                $setup->getIdxName(
+                    $installer->getTable('picup_warehouse_shifts'),
+                    ['store_id'],
+                    AdapterInterface::INDEX_TYPE_INDEX
+                ),
                 ['store_id'],
-                AdapterInterface::INDEX_TYPE_INDEX
-            ),
-            ['store_id'],
-            ['type' => AdapterInterface::INDEX_TYPE_INDEX]
-        )->setComment(
-            'Picup Shift Table'
-        );
-        $installer->getConnection()->createTable($table);
+                ['type' => AdapterInterface::INDEX_TYPE_INDEX]
+            )->setComment(
+                'Picup Shift Table'
+            );
+            $installer->getConnection()->createTable($table);
+        }
 
         /**
          * Create table 'picup_products'
          */
 
-        $table = $installer->getConnection()->newTable(
-            $installer->getTable('picup_products')
-        )->addColumn(
-            'id',
-            \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
-            null,
-            ['identity' => true, 'nullable' => false, 'primary' => true],
-            'ID'
-        )->addColumn(
-            'product_sku',
-            \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
-            255,
-            ['nullable' => false],
-            'Product Sku'
-        )->addColumn(
-            'picup_enabled',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Picup Enabled for Product'
-        )->addColumn(
-            'picup_width',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Product Width'
-        )->addColumn(
-            'picup_length',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Product Length'
-        )->addColumn(
-            'picup_height',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Product Height'
-        )->addColumn(
-            'store_id',
-            \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
-            null,
-            ['nullable' => false],
-            'Store ID'
-        )->addColumn(
-            'shift_data',
-            \Magento\Framework\DB\Ddl\Table::TYPE_BLOB,
-            null,
-            ['nullable' => false],
-            'Shift Data'
-        )->setComment(
-            'Picup Product Table'
-        );
-        $installer->getConnection()->createTable($table);
+        if (!$installer->tableExists("picup_products")) {
+            $table = $installer->getConnection()->newTable(
+                $installer->getTable('picup_products')
+            )->addColumn(
+                'id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+                null,
+                ['identity' => true, 'nullable' => false, 'primary' => true],
+                'ID'
+            )->addColumn(
+                'product_sku',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                255,
+                ['nullable' => false],
+                'Product Sku'
+            )->addColumn(
+                'picup_enabled',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Picup Enabled for Product'
+            )->addColumn(
+                'picup_width',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Product Width'
+            )->addColumn(
+                'picup_length',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Product Length'
+            )->addColumn(
+                'picup_height',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Product Height'
+            )->addColumn(
+                'store_id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Store ID'
+            )->addColumn(
+                'shift_data',
+                \Magento\Framework\DB\Ddl\Table::TYPE_BLOB,
+                null,
+                ['nullable' => false],
+                'Shift Data'
+            )->setComment(
+                'Picup Product Table'
+            );
+            $installer->getConnection()->createTable($table);
+        }
+
+        if (!$installer->tableExists("picup_warehouse_zones")) {
+            $table = $installer->getConnection()->newTable(
+                $installer->getTable('picup_warehouse_zones')
+            )->addColumn(
+                'id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+                null,
+                ['identity' => true, 'nullable' => false, 'primary' => true],
+                'ID'
+            )->addColumn(
+                'store_id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['nullable' => false],
+                'Store ID'
+            )->addColumn(
+                'postal_codes',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                null,
+                ['nullable' => false],
+                'Postal Codes'
+            )->addColumn(
+                'shift_start',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                10,
+                ['nullable' => false],
+                'Shift Start'
+            )->addColumn(
+                'shift_end',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                10,
+                ['nullable' => false],
+                'Shift End'
+            )->addColumn(
+                'cutoff_hours',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                10,
+                ['nullable' => false],
+                'Cutoff Hours'
+            )->addColumn(
+                'description',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                255,
+                ['nullable' => false],
+                'Description'
+            )->addColumn(
+                'consignment_id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                255,
+                ['nullable' => false],
+                'Consignment Id'
+            )->addColumn(
+                'price',
+                \Magento\Framework\DB\Ddl\Table::TYPE_NUMERIC,
+                null,
+                ['nullable' => false],
+                'Price'
+            )->addIndex(
+                $setup->getIdxName(
+                    $installer->getTable('picup_warehouse_zones'),
+                    ['store_id'],
+                    AdapterInterface::INDEX_TYPE_INDEX
+                ),
+                ['store_id'],
+                ['type' => AdapterInterface::INDEX_TYPE_INDEX]
+            )->setComment(
+                'Picup Zone Table'
+            );
+            $installer->getConnection()->createTable($table);
+        }
 
         $installer->endSetup();
     }

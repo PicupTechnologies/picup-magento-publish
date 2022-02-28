@@ -16,11 +16,10 @@
 
 $WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+/** @var Picup\Shipping\Block\Admin\Shifts $block */
 $request = $block->getRequest();
 
 $stores = $block->getStores();
-
-
 
 //Get the first store
 if (empty($request->storeId)) {
@@ -39,29 +38,218 @@ if (!empty($request->deleteId)) {
     $block->deleteShift($request->deleteId);
 }
 
-if (!empty($request->weekDay) && !empty($request->description) && !empty($request->timeFrom)&& !empty($request->timeTo) && !empty($request->price)) {
-    $block->addShift($request->storeId, $request->weekDay, $request->description, $request->timeFrom, $request->timeTo, $request->price, $request->cutoffTime);
+if (!empty($request->deleteZoneId)) {
+    $block->deleteZone($request->deleteZoneId);
 }
 
 
+if (!empty($request->shift)) {
+    foreach ($request->shift as $shiftId => $shiftData) {
+        if ($shiftId == 0) {
+            $block->addShift($request->storeId, $shiftData['weekDay'], $shiftData['description'], $shiftData['timeFrom'], $shiftData['timeTo'], $shiftData['price'], $shiftData['cutoffTime'], $shiftData['picupZones'], $shiftData['same_day_caption'], $shiftData['next_day_caption']);
+        } else {
+
+            $block->updateShift($request->storeId, $shiftData['weekDay'], $shiftData['description'], $shiftData['timeFrom'], $shiftData['timeTo'], $shiftData['price'], $shiftData['cutoffTime'], $shiftData['picupZones'], $shiftData['same_day_caption'], $shiftData['next_day_caption'], $shiftId);
+        }
+    }
+    $request->{"data-target"} = "buckets";
+}
+
+if (!empty($request->zone)) {
+    foreach ($request->zone as $zoneId => $zoneData) {
+        if (empty($zoneData["zoneShowZone"])) {
+            $zoneData["zoneShowZone"] = 0;
+        }
+        if ($zoneId == 0) {
+            $block->addZone($request->storeId, $zoneData['zoneDescription'], $zoneData['zonePostalCodes'], $zoneData['zoneTimeFrom'], $zoneData['zoneTimeTo'], $zoneData['zonePrice'], $zoneData['zoneCutoffHours'], $zoneData['zoneConsignmentId'], $zoneData["zoneShowZone"], $zoneData["zonePostalCodesIgnore"]);
+        } else {
+            $block->updateZone($request->storeId, $zoneData['zoneDescription'], $zoneData['zonePostalCodes'], $zoneData['zoneTimeFrom'], $zoneData['zoneTimeTo'], $zoneData['zonePrice'], $zoneData['zoneCutoffHours'], $zoneData['zoneConsignmentId'], $zoneData["zoneShowZone"], $zoneData["zonePostalCodesIgnore"], $zoneId);
+        }
+    }
+    $request->{"data-target"} = "zones";
+}
+
 $shifts = $block->getShifts($request->storeId);
+$zones = $block->getZones($request->storeId);
+
+$zoneData = [];
+foreach ($zones as $id => $zone) {
+    $zoneData[] = $zone["description"];
+}
+
+$zoneData = implode(",", $zoneData);
+
+function createBucketRow($data, $zoneData, $request)
+{
+    if (empty($data)) {
+        $data["description"] = "";
+        $data["same_day_caption"] = "Same Day";
+        $data["next_day_caption"] = "Next Day";
+        $data["delivery_day"] = 1;
+        $data["shift_start"] = "";
+        $data["shift_end"] = "";
+        $data["cutoff_time"] = 1;
+        $data["price"] = 0.00;
+        $data["picup_zones"] = $zoneData;
+        $data["id"] = 0;
+    }
+
+    if (empty($data["same_day_caption"])) {
+        $data["same_day_caption"] = "Same Day";
+    }
+
+    if (empty($data["next_day_caption"])) {
+        $data["next_day_caption"] = "Next Day";
+    }
+
+    ?>
+    <tr>
+    <td>
+        <select class="form-control" name="shift[<?=$data["id"]?>][weekDay]">
+            <option <?php if ($data["delivery_day"] == 1) { echo "selected"; } ?> value="1">Monday</option>
+            <option <?php if ($data["delivery_day"] == 2) { echo "selected"; } ?> value="2">Tuesday</option>
+            <option <?php if ($data["delivery_day"] == 3) { echo "selected"; } ?> value="3">Wednesday</option>
+            <option <?php if ($data["delivery_day"] == 4) { echo "selected"; } ?> value="4">Thursday</option>
+            <option <?php if ($data["delivery_day"] == 5) { echo "selected"; } ?> value="5">Friday</option>
+            <option <?php if ($data["delivery_day"] == 6) { echo "selected"; } ?> value="6">Saturday</option>
+            <option <?php if ($data["delivery_day"] == 7) { echo "selected"; } ?> value="7">Sunday</option>
+        </select>
+    </td>
+    <td>
+        <input class="form-control" type="text" name="shift[<?=$data["id"]?>][description]" value="<?=$data["description"]?>" placeholder="Description" required data-validate='{"required":true}'>
+    </td>
+    <td>
+        <input class="form-control" type="text" name="shift[<?=$data["id"]?>][same_day_caption]" value="<?=$data["same_day_caption"]?>" placeholder="Same Day Caption" required data-validate='{"required":true}'>
+    </td>
+    <td>
+        <input class="form-control" type="text" name="shift[<?=$data["id"]?>][next_day_caption]" value="<?=$data["next_day_caption"]?>" placeholder="Next Day Caption" required data-validate='{"required":true}'>
+    </td>
+    <td>
+        <input class="form-control" type="text" name="shift[<?=$data["id"]?>][timeFrom]" placeholder="00:00" value="<?=$data["shift_start"]?>" data-validate='{"validate-time":true}'>    </td>
+    <td>
+        <input class="form-control" type="text" name="shift[<?=$data["id"]?>][timeTo]" placeholder="00:00" value="<?=$data["shift_end"]?>" data-validate='{"validate-time":true}'>
+    </td>
+    <td >
+        <input class="form-control text-right" type="text" name="shift[<?=$data["id"]?>][cutoffTime]" placeholder="1" value="<?=$data["cutoff_time"]?>">
+    </td>
+    <td >
+        <input class="form-control text-right" type="text" name="shift[<?=$data["id"]?>][price]" placeholder="0.00" value="<?=number_format($data["price"], 2)?>">
+    </td>
+    <td >
+        <input class="picupZones"  type="text"  name="shift[<?=$data["id"]?>][picupZones]" value="<?= $data["picup_zones"] ?>">
+    </td>
+    <?php
+    if (empty($data["id"])) {
+        ?>
+        <td>
+            <input type="button" name="addShift" value="Add Shift" class="btn btn-primary" onclick="document.formShifts.submit()">
+        </td>
+        <?php
+    } else {
+        ?>
+        <td>
+            <input type="button" name="saveShift" value="Save" class="btn btn-primary" onclick="document.formShifts.submit()">
+            <a href="#" onclick="if(confirm('Delete this bucket?')){ location.href = '?data-target=buckets&storeId=<?= $request->storeId ?>&deleteId=<?= $data["id"] ?>';  }" class="btn btn-danger">Delete</a>
+        </td>
+        <?php
+    }
+    ?>
+    </tr>
+    <?php
+}
+
+function createZoneRow($data, $request) {
+    if (empty($data)) {
+        $data["description"] = "";
+        $data["postal_codes"] = "";
+        $data["postal_codes_ignore"] = "";
+        $data["shift_start"] = "";
+        $data["shift_end"] = "";
+        $data["cutoff_hours"] = 1;
+        $data["consignment_id"] = "";
+        $data["show_zone"] = 1;
+        $data["price"] = 0.00;
+        $data["id"] = 0;
+    }
+    ?>
+    <tr>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zoneDescription]" placeholder="Description" value="<?=$data["description"]?>" required  data-validate='{"required":true}'>
+        </td>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zonePostalCodes]" placeholder="0000,0000,0000..." value="<?=$data["postal_codes"]?>"  required data-validate='{"required":true}'><br>
+            <?php
+            if (empty($data["id"])) {
+            ?>
+            <a href="https://www.freemaptools.com/find-south-africa-postal-codes-inside-radius.htm"
+               target="_blank">Lookup Postal Zones</a>
+            <?php
+            }
+            ?>
+        </td>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zonePostalCodesIgnore]" placeholder="0000,0000,0000..." value="<?=$data["postal_codes_ignore"]?>"  required data-validate='{"required":true}'><br>
+        </td>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zoneTimeFrom]" placeholder="00:00" value="<?=$data["shift_start"]?>"
+                   data-validate='{"validate-time":true}'>
+        </td>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zoneTimeTo]" placeholder="00:00" value="<?=$data["shift_end"]?>"
+                   data-validate='{"validate-time":true}'>
+        </td>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zoneCutoffHours]" placeholder="1" value="<?=$data["cutoff_hours"]?>" >
+        </td>
+        <td>
+            <input class="form-control" type="text" name="zone[<?=$data["id"]?>][zoneConsignmentId]" placeholder="Unique identifier" value="<?=$data["consignment_id"]?>">
+        </td>
+        <td>
+            <input class="form-control text-right" type="text" name="zone[<?=$data["id"]?>][zonePrice]" placeholder="0.00" value="<?=number_format($data["price"],2)?>">
+        </td>
+        <td>
+            <input class="form-control" <?php if ($data["show_zone"] == 1) { echo "checked"; } ?> type="checkbox" name="zone[<?=$data["id"]?>][zoneShowZone]" value="1">
+        </td>
+        <?php
+        if (empty($data["id"])) {
+            ?>
+            <td>
+                <input type="button" name="addZone" value="Add Zone" class="btn btn-primary" onclick="document.formZones.submit()">
+            </td>
+            <?php
+        } else {
+            ?>
+            <td>
+                <input type="button" name="saveZone" value="Save" class="btn btn-primary" onclick="document.formZones.submit()">
+                <a href="#" onclick="if(confirm('Delete this zone?')){ location.href = '?data-target=zones&storeId=<?= $request->storeId ?>&deleteZoneId=<?= $data["id"] ?>';  }" class="btn btn-danger">Delete</a>
+            </td>
+            <?php
+        }
+        ?>
+    </tr>
+    <?php
+}
 ?>
-<link href="https://picup.co.za/assets/css/style.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-12">
             <button type="button" class="picupMenu btn btn-primary" data-target="warehouse">My Warehouse</button>
             <button type="button" class="picupMenu btn btn-primary" data-target="buckets">Buckets</button>
-            <a href="<?=$block->getUrl("adminhtml/system_config/edit/section/carriers");?>" class="picupMenu btn btn-primary" data-target="shipping-settings">Store Settings</a>
+            <button type="button" class="picupMenu btn btn-primary" data-target="zones">Delivery Zones</button>
+            <a href="<?= $block->getUrl("adminhtml/system_config/edit/section/carriers"); ?>"
+               class="picupMenu btn btn-primary" data-target="shipping-settings">Store Settings</a>
         </div>
     </div>
     <hr/>
     <div id="warehouse" class="picupContent row">
         <div class="col-md-12">
-            <iframe frameborder="0" style="width:100%; height: 90vh" src="https://staging.picup.co.za/login"></iframe>
+            <iframe frameborder="0" style="width:100%; height: 90vh" src="https://picup.co.za/login"></iframe>
         </div>
     </div>
-    <form class="form" name="formShifts" data-mage-init='{
+    <div id="buckets" class="picupContent">
+        <form class="form" name="formShifts" data-mage-init='{
                 "validation":{
                         "rules": {
                                 "description": {
@@ -70,114 +258,194 @@ $shifts = $block->getShifts($request->storeId);
                         }
                 }
         }'>
-        <div id="buckets" class="picupContent">
             <div class="row">
                 <div class="col-md-12">
-                    <input type="hidden" name="data-target" value="buckets" >
+                    <input type="hidden" name="data-target" value="buckets">
                     <div class="form-group">
                         <label>Select Store</label>
                         <select class="form-control" name="storeId" onchange="document.formShifts.submit()">
                             <?php
                             foreach ($stores as $store) {
                                 ?>
-                                <option value="<?=$store->getId()?>" <?php if ($store->getId() == $request->storeId) { ?> selected <?php } ?> ><?=$store->getName()?></option>
+                                <option
+                                    value="<?= $store->getId() ?>" <?php if ($store->getId() == $request->storeId) { ?> selected <?php } ?> ><?= $store->getName() ?></option>
                                 <?php
                             }
                             ?>
                         </select>
                     </div>
                 </div>
-
-                <div class="col-md-2">
-                    <label>Week Day</label>
-                    <select class="form-control" name="weekDay">
-                        <option value="1">Monday</option>
-                        <option value="2">Tuesday</option>
-                        <option value="3">Wednesday</option>
-                        <option value="4">Thursday</option>
-                        <option value="5">Friday</option>
-                        <option value="6">Saturday</option>
-                        <option value="7">Sunday</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>Description</label>
-                    <input class="form-control" type="text" name="description" placeholder="Description" required  data-validate='{"required":true}'>
-                </div>
-                <div class="col-md-2">
-                    <label>Time From</label>
-                    <input class="form-control" type="text" name="timeFrom" placeholder="00:00" data-validate='{"validate-time":true}'>
-                </div>
-                <div class="col-md-2">
-                    <label>Time To</label>
-                    <input class="form-control" type="text" name="timeTo" placeholder="00:00" data-validate='{"validate-time":true}'>
-                </div>
-                <div class="col-md-2">
-                    <label>Price</label>
-                    <input class="form-control" type="text" name="price" placeholder="0.00" >
-                </div>
-                <div class="col-md-1">
-                    <label>Cut-off Time</label>
-                    <input class="form-control" type="text" name="cutoffTime" placeholder="12:00" >
-                </div>
-                <div class="col-md-1">
-                    <br>
-                    <input type="button" name="add" value="Add Shift" class="btn btn-primary" onclick="document.formShifts.submit()">
+                <div class="col-md-12">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>Week Day</th>
+                            <th>Description</th>
+                            <th>Same Day Caption</th>
+                            <th>Next Day Caption</th>
+                            <th>Time From</th>
+                            <th>Time To</th>
+                            <th class="text-right">Cut-off Hours</th>
+                            <th class="text-right">Price</th>
+                            <th>Picup Zones</th>
+                            <th style="width:160px">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php
+                        createBucketRow(null, $zoneData, $request);
+                        ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             <div class="row">
-
                 <div class="col-md-12">
                     <hr>
                     <table class="table table-striped">
                         <thead>
-                            <tr>
-                                <th>Week Day</th>
-                                <th>Description</th>
-                                <th class="text-right">Time From</th>
-                                <th class="text-right">Time To</th>
-                                <th class="text-right">Price</th>
-                                <th class="text-right">Cut-off Time</th>
-                                <th>Action</th>
-                            </tr>
+                        <tr>
+                            <th>Week Day</th>
+                            <th>Description</th>
+                            <th>Same Day Caption</th>
+                            <th>Next Day Caption</th>
+                            <th>Time From</th>
+                            <th>Time To</th>
+                            <th class="text-right">Cut-off Hours</th>
+                            <th class="text-right">Price</th>
+                            <th>Picup Zones</th>
+                            <th style="width:160px">Action</th>
+                        </tr>
                         </thead>
                         <tbody>
                         <?php
                         foreach ($shifts as $id => $shift) {
-                        ?>
-                            <tr>
-                                <td><?=$WEEK_DAYS[$shift["delivery_day"]-1]?></td>
-                                <td><?=$shift["description"]?></td>
-                                <td class="text-right"><?=$shift["shift_start"]?></td>
-                                <td class="text-right"><?=$shift["shift_end"]?></td>
-                                <td class="text-right"><?=number_format($shift["price"], 2)?></td>
-                                <td class="text-right"><?=$shift["cutoff_time"]?></td>
-                                <td><a href="?data-target=buckets&storeId=<?=$request->storeId?>&deleteId=<?=$shift["id"]?>" class="btn btn-danger">Delete</a></td>
-                            </tr>
-
-                        <?php
+                            createBucketRow($shift, $zoneData, $request);
                         }
                         ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </form>
+    </div>
+    <div id="zones" class="picupContent">
+        <form class="form" name="formZones" data-mage-init='{
+                "validation":{
+                        "rules": {
+                                "description": {
+                                        "required":true
+                                }
+                        }
+                }
+        }'>
+            <div class="row">
+                <div class="col-md-12">
+                    <input type="hidden" name="data-target" value="zones">
+                    <div class="form-group">
+                        <label>Select Store</label>
+                        <select class="form-control" name="storeId" onchange="document.formShifts.submit()">
+                            <?php
+                            foreach ($stores as $store) {
+                                ?>
+                                <option
+                                    value="<?= $store->getId() ?>" <?php if ($store->getId() == $request->storeId) { ?> selected <?php } ?> ><?= $store->getName() ?></option>
+                                <?php
+                            }
+                            ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Postal Codes</th>
+                            <th>Postal Codes (Ignore)</th>
+                            <th class="text-right">Time From</th>
+                            <th class="text-right">Time To</th>
+                            <th class="text-right">Cut-off Hours</th>
+                            <th>Consignment Id</th>
+                            <th class="text-right">Price</th>
+                            <th>Show Zone</th>
+                            <th style="width:160px">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php
+                        createZoneRow(null, $request);
+                        ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <hr>
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Postal Codes</th>
+                            <th>Postal Codes (Ignore)</th>
+                            <th class="text-right">Time From</th>
+                            <th class="text-right">Time To</th>
+                            <th class="text-right">Cut-off Hours</th>
+                            <th>Consignment Id</th>
+                            <th class="text-right">Price</th>
+                            <th>Show Zone</th>
+                            <th style="width:160px">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php
+                        foreach ($zones as $id => $zone) {
+                            createZoneRow($zone, $request);
+                        }
+                        ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+    </div>
     </form>
-
 </div>
 <script type="text/javascript">
 
-        require(['jquery'], function($) {
+    require(['jquery'], function ($) {
+        $('.picupContent').hide();
+        $(document).on("click", ".picupMenu", function (event) {
             $('.picupContent').hide();
-            $(document).on("click", ".picupMenu", function(event) {
-                $('.picupContent').hide();
-                $('#'+$(event.target).attr('data-target')).show();
-            });
-
-
-            $('#<?=$request->{"data-target"}?>').show();
+            $('#' + $(event.target).attr('data-target')).show();
         });
+
+        $('#<?=$request->{"data-target"}?>').show();
+    });
+
+    require(['jquery', 'bloodhound', 'typeahead', 'bootstraptypeahead'], function ($, Bloodhound, typeahead, boostraptypeahead) {
+        var engine = new Bloodhound({
+            local: '<?=$zoneData?>'.split(','),
+            datumTokenizer: function (d) {
+                console.log(d);
+                return Bloodhound.tokenizers.whitespace(d.value);
+            },
+            queryTokenizer: Bloodhound.tokenizers.whitespace
+        });
+        engine.initialize();
+
+        $('.picupZones').tagsinput({
+            typeaheadjs: {
+                name: 'value',
+                displayKey: 'value',
+                valueKey: 'value',
+                source: engine.ttAdapter(),
+                templates: {
+                    empty: ['<div class="empty-message">No matches</div>']
+                }
+            }
+        });
+    });
 
 </script>
 <!-- inline fixes until module is complete -->
@@ -185,6 +453,8 @@ $shifts = $block->getShifts($request->storeId);
     #buckets select, #buckets input {
         height: 3rem;
     }
+
+
 </style>
 
 <script type="text/javascript">
@@ -193,13 +463,11 @@ $shifts = $block->getShifts($request->storeId);
         'jquery/ui',
         'jquery/validate',
         'mage/translate'
-    ], function($){
+    ], function ($) {
         $.validator.addMethod(
             'validate-time', function (value) {
-                return value.match(^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$);
+                return value.match(^([0 - 1]?[0 - 9]|2[0 - 3]):[0 - 5][0 - 9]$);
             }, $.mage.__('Enter Valid Time')
         );
     });
 </script>
-
-

@@ -1,7 +1,17 @@
 <?php
 /**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
+ * Copyright 2020  Picup Technology (Pty) Ltd or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the GNU General Public License, Version 3.0 or later(the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  https://opensource.org/licenses/GPL-3.0
+ *
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 
 namespace Picup\Shipping\Model\Attribute\Backend;
@@ -16,14 +26,8 @@ class AvailableDelivery extends \Magento\Eav\Model\Entity\Attribute\Backend\Abst
      */
     public function validate($object): bool
     {
-        $value = $object->getData($this->getAttribute()->getAttributeCode());
+        $object->getData($this->getAttribute()->getAttributeCode());
         
-//        if ( ($object->getAttributeSetId() == 10) && ($value == 'wool')) {
-//            throw new \Magento\Framework\Exception\LocalizedException(
-//                __('Bottom can not be wool.')
-//            );
-//        }
-
         return true;
     }
 }

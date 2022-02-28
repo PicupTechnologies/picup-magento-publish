@@ -1,27 +1,34 @@
 <?php
 /**
- * Copyright © Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
+ * Copyright 2020  Picup Technology (Pty) Ltd or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the GNU General Public License, Version 3.0 or later(the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  https://opensource.org/licenses/GPL-3.0
+ *
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 
 namespace Picup\Shipping\Model\Carrier;
 
-/**
- * @api
- * @since 100.0.2
- */
+use Magento\Framework\HTTP\ZendClientFactory;
+
 class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
 {
 
     protected $_URI_LIVE = 'https://picupafricawebapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
 
-    protected $_URI_LIVE_AFRICA = 'https://beta.picup.africa/v1/integration/';
-    protected $_URI_TEST_AFRICA = 'https://beta.picup.africa/v1/integration/';
+    protected $_URI_LIVE_AFRICA = 'https://picupafrica-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_TEST_AFRICA = 'https://picupafrica-webapi.azurewebsites.net/v1/integration/';
 
     protected $_DETAILS_LIVE = '/details';
     protected $_DETAILS_TEST = '/details';
-
 
     protected $_code = "picup";
 
@@ -36,7 +43,7 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
     protected $_rateMethodFactory;
 
     /**
-     * @var  \Magento\Framework\HTTP\ZendClientFactory
+     * @var  ZendClientFactory
      */
     protected $_httpClientFactory;
 
@@ -56,7 +63,7 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
     protected $_customerSession;
 
     /**
-     * @var \Picup\Shipping\Model\Carrier\PicUp
+     * @var PicUp
      */
     protected $_carrier;
 
@@ -72,27 +79,29 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
 
     /**
      * PicupWarehouseList constructor.
-     * @param \Magento\Framework\HTTP\ZendClientFactory $httpClientFactory
-     * @param \Picup\Shipping\Model\Carrier\PicUp $carrier
+     * @param ZendClientFactory $httpClientFactory
+     * @param PicUp $carrier
      */
-    public function __construct(\Magento\Framework\HTTP\ZendClientFactory $httpClientFactory,
-                                \Picup\Shipping\Model\Carrier\PicUp $carrier,
+    public function __construct(ZendClientFactory                           $httpClientFactory,
+                                PicUp                                       $carrier,
                                 \Magento\Framework\Message\ManagerInterface $messageManager,
-                                \Psr\Log\LoggerInterface $logger
-    )
-    {
+                                \Psr\Log\LoggerInterface                    $logger
+    ) {
         $this->_httpClientFactory = $httpClientFactory;
         $this->_carrier = $carrier;
         $this->_messageManager = $messageManager;
         $this->_logger = $logger;
     }
 
-
+    /**
+     * Gets config data
+     * @param $field
+     * @return mixed
+     */
     public function getConfigData($field)
     {
         return $this->_carrier->getConfigData($field);
     }
-
 
     /**
      * Options getter
@@ -101,39 +110,47 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
      */
     public function toOptionArray()
     {
-
-
         if (empty($this->getConfigData("apiKeyTest")) || empty($this->getConfigData("apiKey"))) return;
 
         $client = $this->_httpClientFactory->create();
 
         if ($this->getConfigData('outsideSouthAfrica')) {
             if ($this->getConfigData('testMode')) {
-                $detailsUrl = $this->_URI_TEST_AFRICA  . $this->getConfigData("apiKeyTest") . $this->_DETAILS_TEST;
+                $detailsUrl = $this->_URI_TEST_AFRICA  . trim($this->getConfigData("apiKeyTest")) . $this->_DETAILS_TEST;
             } else {
-                $detailsUrl = $this->_URI_LIVE_AFRICA . $this->getConfigData("apiKey") . $this->_DETAILS_LIVE;
+                $detailsUrl = $this->_URI_LIVE_AFRICA . trim($this->getConfigData("apiKey")) . $this->_DETAILS_LIVE;
             }
         } else {
             if ($this->getConfigData('testMode')) {
-                $detailsUrl = $this->_URI_TEST . $this->getConfigData("apiKeyTest") . $this->_DETAILS_TEST;
+                $detailsUrl = $this->_URI_TEST . trim($this->getConfigData("apiKeyTest")) . $this->_DETAILS_TEST;
             } else {
-                $detailsUrl = $this->_URI_LIVE  . $this->getConfigData("apiKey") . $this->_DETAILS_LIVE;
+                $detailsUrl = $this->_URI_LIVE  . trim($this->getConfigData("apiKey")) . $this->_DETAILS_LIVE;
             }
         }
+
 
 
         $client->setUri($detailsUrl);
 
         $client->setMethod(\Zend_Http_Client::GET);
 
-        try {
+        if ($this->getConfigData('testMode')) {
+            $client->setHeaders('api-key', $this->getConfigData("apiKeyTest"));
+        } else {
+            $client->setHeaders('api-key', $this->getConfigData("apiKey"));
+        }
 
+        try {
             $response = $client->request();
-            $details = json_decode($response->getBody());
+            $this->debugLog("Warehouse List", $response->getBody() );
+
+            $details = json_decode(utf8_decode($response->getBody()));
             $warehouses = $details->warehouses;
 
+
         } catch (\Exception $exception) {
-            $this->_messageManager->addNoticeMessage("Please setup warehouses on your profile ". $detailsUrl);
+            $this->_messageManager->addNoticeMessage("Please setup warehouses on your profile ". $exception->getMessage());
+            $this->debugLog("warehouses", $detailsUrl);
             $warehouses = [];
         }
 
@@ -143,35 +160,33 @@ class PicupWarehouseList implements \Magento\Framework\Option\ArrayInterface
             $this->debugLog("***** id ***** ", $warehouse->warehouse_id);
             $this->debugLog("***** name ***** ", $warehouse->warehouse_name);
 
-
             $warehouseArray[$warehouse->warehouse_id] = $warehouse->warehouse_name;
-
         }
 
         $this->debugLog("WAREHOUSE ARRAY", $warehouseArray);
 
-        //return [['value' => 1, 'label' => __('Province')], ['value' => 0, 'label' => __('Rural')]];
         return $warehouseArray;
-
     }
 
 
     /**
      * Get options in "key-value" format
-     *
      * @return array
      */
     public function toArray()
     {
         return [0 => __('No'), 1 => __('Yes')];
-        $this->debugLog("WAREHOUSE ARRAY - Create", $warehouseArray);
     }
 
+    /**
+     * Debug logger
+     * @param string $name
+     * @param $obj
+     */
     public function debugLog($name = "Debug Msg", $obj)
     {
         if ($this->getConfigData("debug")) {
-            //file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1), FILE_APPEND);
-            $this->_logger->debug($name, ["context" => print_r($obj)]);
+            $this->_logger->debug($name, ["context" => print_r($obj, 1)]);
         }
     }
 }

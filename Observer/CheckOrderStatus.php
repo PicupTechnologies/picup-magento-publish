@@ -19,11 +19,11 @@ use Magento\Framework\Event\ObserverInterface;
 
 class CheckOrderStatus implements ObserverInterface {
 
-    protected $_URI_LIVE = 'https://picupafricawebapi.azurewebsites.net/v1/integration/';
+    protected $_URI_LIVE = 'https://picupafrica-webapi.azurewebsites.net/v1/integration/';
     protected $_URI_TEST = 'https://picupstaging-webapi.azurewebsites.net/v1/integration/';
 
-    protected $_URI_LIVE_AFRICA = 'https://beta.picup.africa/v1/integration/';
-    protected $_URI_TEST_AFRICA = 'https://beta.picup.africa/v1/integration/';
+    protected $_URI_LIVE_AFRICA = 'https://picupafrica-webapi.azurewebsites.net/v1/integration/';
+    protected $_URI_TEST_AFRICA = 'https://picupafrica-webapi.azurewebsites.net/v1/integration/';
 
     protected $_ADD_TO_BUCKET_LIVE = 'add-to-bucket';
     protected $_ADD_TO_BUCKET_TEST = 'add-to-bucket';
@@ -81,9 +81,11 @@ class CheckOrderStatus implements ObserverInterface {
 
         $result = $connection->fetchAll($sql); // gives associated array, table fields as key in array.
 
-        $this->debugLog("Config Data for {$field}", $result[0]["value"]);
-
-        return $result[0]["value"];
+        if (!empty($result)) {
+            return $result[0]["value"];
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -91,7 +93,7 @@ class CheckOrderStatus implements ObserverInterface {
      */
     public function execute(\Magento\Framework\Event\Observer $observer) {
         $this->_order = $observer->getEvent()->getOrder();
-        $orderStatus=$this->_order->getStatus();
+        $orderStatus = $this->_order->getStatus();
 
 
         //Only process shipping request if order is processing (has been paid)
@@ -101,11 +103,14 @@ class CheckOrderStatus implements ObserverInterface {
 
             //Only execute code for Picup Delivery Shifts - This will create or add the order to a bucket
             //        'PicUp Shipping - 2020-09-05 - Saturday Delivery'
-            $this->debugLog("Shipping Description", substr($this->_order->getShippingDescription(),0, 14));
-
-            if (substr($this->_order->getShippingDescription(),0, 14) == 'PicUp Shipping'){
+            $this->debugLog("Shipping Method", substr($this->_order->getShippingMethod(),0, 14));
+			
+            if (substr($this->_order->getShippingMethod(),0, 5) == 'picup'){
 
                 $shippingDate = substr($this->_order->getShippingDescription(),17, 10);
+                if (!strtotime($shippingDate)) {
+                     $shippingDate = $this->NextBusinessDay(date('c'));
+                }
                 $this->debugLog("SHIPPING DATE", $shippingDate);
 
 
@@ -139,7 +144,7 @@ class CheckOrderStatus implements ObserverInterface {
 
                 //if the current server time is less then 14:00 (12:00 local time SA is 2 hours ahead of UTC)
                 if (date('H') > 14) {
-                    $collectionDate = $this->next_business_day(date('c'));
+                    $collectionDate = $this->NextBusinessDay(date('c'));
                     $currentWeekDay++;
                     if ($currentWeekDay > 7){
                         $currentWeekDay = 1;
@@ -150,7 +155,6 @@ class CheckOrderStatus implements ObserverInterface {
                 {
                     $collectionDate = date('c');
                 }
-
 
                 $this->debugLog("Current Weekday", $currentWeekDay);
 
@@ -174,7 +178,6 @@ class CheckOrderStatus implements ObserverInterface {
                 $warehouseId = $this->getConfigData('warehouseId');
 
 
-                $this->debugLog('Delivery day', $shiftForDelivery['delivery_day']);
                 $this->debugLog('$currentWeekDay', $currentWeekDay);
 
 
@@ -184,21 +187,89 @@ class CheckOrderStatus implements ObserverInterface {
                 $this->debugLog('$warehouseId', $warehouseId);
 
                 $collectionDate = date_create_from_format("Y-m-d",$shippingDate);
-                $this->debugLog('$collectionDate', $collectionDate);
 
-                $this->postShippingBucket(date_format($collectionDate,"c"), $shiftStart,$shiftEnd, $warehouseId);
 
-                $this->debugLog("AFTER POST SHIPPING BUCKET", 'XXXXXXXXXXXXX');
-                //die;
+                //$this->debugLog('$collectionDate', $collectionDate);
+
+                //get the consignment id based on the shipping method.
+                if (!empty($shiftForDelivery["consignment_id"])) {
+                    $consignment = $shiftForDelivery["consignment_id"];
+                } else {
+                    $consignment = $shiftForDelivery["description"];
+                }
+
+
+
+                $result = $this->postShippingBucket(date_format($collectionDate,"c"), $shiftStart,$shiftEnd, $warehouseId,$consignment);
+
+                //get the tracking information
+                foreach ($result as $key => $keyValue) {
+                    $shippingData = array(
+                        'carrier_code' => "Picup Shipping",
+                        'title' => 'Picup Tracking Code',
+                        'number' => $keyValue[0]
+                    );
+                    if ($this->getConfigData('testMode')) {
+                        $suffixUrl = "https://staging.picup.co.za/order-tracking";
+                    } else {
+                        $suffixUrl = "https://picup.co.za/order-tracking";
+                    }
+                    $this->_order->addStatusHistoryComment("Track order : <a target=\"_blank\" href=\"{$suffixUrl}?waybill=" . $keyValue[0] . "\">{$keyValue[0]}</a>");
+                }
+
+
+                if ($this->getConfigData('automatedShipping')) {
+                    //Start of shipment
+                    $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+                    $convertOrder = $objectManager->create('Magento\Sales\Model\Convert\Order');
+                    $shipment = $convertOrder->toShipment($this->_order);
+
+                    // Loop through order items
+                    foreach ($this->_order->getAllItems() as $orderItem) {
+                        // Check if order item has qty to ship or is virtual
+                        if (!$orderItem->getQtyToShip() || $orderItem->getIsVirtual()) {
+                            continue;
+                        }
+
+                        $qtyShipped = $orderItem->getQtyToShip();
+
+                        // Create shipment item with qty
+                        $shipmentItem = $convertOrder->itemToShipmentItem($orderItem)->setQty($qtyShipped);
+
+                        // Add shipment item to shipment
+                        $shipment->addItem($shipmentItem);
+                    }
+
+                    // Register shipment
+                    $shipment->register();
+                    $this->_order->setIsInProcess(true);
+
+                    $track = $objectManager->create('Magento\Sales\Model\Order\Shipment\TrackFactory')->create()->addData($shippingData);
+                    $shipment->addTrack($track)->save();
+                    $shipment->save();
+                }
+                //End of shipment
+
+
+                $this->_order->save();
+
+                $this->debugLog("AFTER POST SHIPPING BUCKET", $result);
             }
         }
     }
 
-    public function debugLog ($name = "Debug Msg", $obj){
 
-        //file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/picup_response.txt", "\n" . date("Y-m-d h:i:s") . "<<DBG>>" . $name . " <VAL> " . print_r($obj, 1) . " \n", FILE_APPEND);
+
+
+    /**
+     * Adds debugging information to the log file
+     * @param string $name
+     * @param array $obj
+     */
+    public function debugLog ($name = "Debug Msg", $obj=[]){
+
         if ($this->getConfigData("debug")) {
-            $this->_logger->debug($name, ["context" => print_r($obj)]);
+            $this->_logger->debug($name, ["context" => json_encode($obj)]);
         }
     }
 
@@ -227,14 +298,22 @@ class CheckOrderStatus implements ObserverInterface {
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         $resource = $objectManager->get('Magento\Framework\App\ResourceConnection');
         $connection = $resource->getConnection();
-        $tableName = $resource->getTableName('picup_warehouse_shifts');
 
+        $tableName = $resource->getTableName('picup_warehouse_shifts');
         $sql = "select * from " . $tableName . " where description = '{$description}'";
         $this->debugLog("Shift SQL", $sql);
 
         $result = $connection->fetchAll($sql); // gives associated array, table fields as key in array.
-        $this->debugLog("Record Count", count($result));
 
+        if (empty($result)) {
+            $tableName = $resource->getTableName('picup_warehouse_zones');
+            $sql = "select * from " . $tableName . " where description = '{$description}'";
+            $this->debugLog("Shift SQL", $sql);
+
+            $result = $connection->fetchAll($sql);
+        }
+
+        $this->debugLog("Record Count", count($result));
 
         return $result;
     }
@@ -247,7 +326,7 @@ class CheckOrderStatus implements ObserverInterface {
     /// Parameters:
     ///
 
-    public function postShippingBucket($collectionDate, $shiftStart,$shiftEnd, $warehouseId)
+    public function postShippingBucket($collectionDate, $shiftStart,$shiftEnd, $warehouseId, $consignment)
     {
         $this->debugLog("-----", "INSIDE postShippingBucket");
 
@@ -265,11 +344,15 @@ class CheckOrderStatus implements ObserverInterface {
             }
         }
 
-        $bucketJSON = $this->buildBucketJson($collectionDate, $shiftStart,$shiftEnd, $warehouseId);
+        $bucketJSON = $this->buildBucketJson($collectionDate, $shiftStart,$shiftEnd, $warehouseId, $consignment);
+
+        $this->debugLog("Bucket Request", $bucketJSON);
 
         $bucketResponse =  $this->postJSONRequest($postUrl, $bucketJSON);
 
         $this->debugLog("Bucket Response", json_decode($bucketResponse));
+
+        return json_decode($bucketResponse);
     }
 
     /**
@@ -288,9 +371,8 @@ class CheckOrderStatus implements ObserverInterface {
             $parcels [] =
                 (object)[
                     "size" => "parcel-medium",
-                    "reference" => "quote-ref-".$this->_order->getId(),
-                    "description" => $item->getProduct()->getName(),
-                    "tracking_number" =>$this->_order->getId()
+                    "parcel_reference" => "quote-ref-".$this->_order->getId()."-$id",
+                    "description" => $item->getProduct()->getName()
                 ];
         }
 
@@ -298,7 +380,14 @@ class CheckOrderStatus implements ObserverInterface {
         return $parcels;
     }
 
-    public function buildBucketJson($dDate, $sStart, $sEnd, $wId)
+    /**
+     * @param $dDate
+     * @param $sStart
+     * @param $sEnd
+     * @param $wId
+     * @return false|string
+     */
+    public function buildBucketJson($dDate, $sStart, $sEnd, $wId, $consignment)
     {
 
         $this->debugLog("dDate", $dDate);
@@ -322,7 +411,9 @@ class CheckOrderStatus implements ObserverInterface {
             ],
             "shipments" => [
                 (object) [
-                    "business_reference" => "PICUP BUCKET" . date("Ymdhis"),
+                    "visit_type" => "delivery",
+                    "consignment" => $consignment,
+                    "business_reference" => $this->_order->getId(),
                     "address" => (object)[
                         "address_line_1" => null,
                         "address_line_2" => null,
@@ -355,20 +446,15 @@ class CheckOrderStatus implements ObserverInterface {
 
         ];
 
-
-
-       // die (print_r ($strBucketJSON,1));
-
-
         $this->debugLog("BUILD JSON", json_encode($strBucketJSON));
 
         return json_encode($strBucketJSON, true);
     }
 
-    ///
-    /// Read the picup_warehouse_shifts table to determine the next available delivery shifts for display in the quotes screen
-    /// Weekday ID
-    ///
+    /**
+     * Gets the available warehouse shifts
+     * @return mixed
+     */
     public function getAvailableShifts(){
 
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
@@ -386,19 +472,14 @@ class CheckOrderStatus implements ObserverInterface {
         $this->debugLog("Record Count", count($result));
 
         return $result;
-
     }
 
-
-    ///
-    /// Posts the JSON Request
-    ///
-    /// Parameters : $postUrl = The complete post url ()
-    ///              $json = the body of the post request
-    ///   returns the body of the post response
-    ///
-
-
+    /**
+     * @param $postUrl
+     * @param $json
+     * @return \Zend_Http_Response
+     * @throws \Zend_Http_Client_Exception
+     */
     function postJSONRequest($postUrl, $json)
     {
         $this->debugLog('POST URL', $postUrl);
@@ -417,11 +498,11 @@ class CheckOrderStatus implements ObserverInterface {
 
         $response = $client->request();
 
-        $this->debugLog('JSON Response', json_decode($response));
-        return $response;
+        $this->debugLog('JSON Response', $response->getBody());
+        return $response->getBody();
     }
 
-    public function next_business_day($date) {
+    public function NextBusinessDay($date) {
         $add_day = 0;
         do {
             $add_day++;
