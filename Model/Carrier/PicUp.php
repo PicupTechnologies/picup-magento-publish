@@ -228,7 +228,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
             $zonePostalCodes = [];
             $sortedShifts = [];
-            $sortedShiftsValid = [];
 
             //global next day var
             $nextDay = date_create(date("Y-m-d"));
@@ -241,10 +240,9 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                         $zonePostalCodes[$zone["description"]] = $zone["postal_codes"];
 
                         //Skip ignored postal codes
-                        if (strpos($zone["postal_codes_ignore"], $request->getDestPostcode()) === true) {
+                        if (strpos($zone["postal_codes_ignore"], $request->getDestPostcode()) !== false) {
                             continue;
                         }
-
 
                         //Cutoff hours need to be subtracted off start time
                         $cutOffTime = new \DateTime(date("Y-m-d") . " " . $zone["shift_start"]);
@@ -252,8 +250,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
                         $currentTime = new \DateTime();
 
-
-                        if ($currentTime < $cutOffTime && $zone["show_zone"] == 1) {
+                        if ($zone["show_zone"] == 1) {
                             //$zonePostalCodes[$zone["description"]] = $zone["postal_codes"];
                             $this->debugLog("\nZone Description", $zone["description"] . " " . $cutOffTime->format("Y-m-d H:i:s"));
                             if (strpos($zone["postal_codes"], $request->getDestPostcode()) !== false || trim($zone["postal_codes"]) == "") {
@@ -278,8 +275,6 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                                 $method2->setCost($zone["price"]);
 
                                 $sortedShifts[$finalDelDate] = $method2;
-                                $sortedShiftsValid[$finalDelDate] = "o";
-
                             }
                         }
                     }
@@ -354,7 +349,7 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
 
 
                     $deliveryDate = new \DateTime($delDateString);
-                    $endShiftTime = new \DateTime(date("Y-m-d") . " " . $shift["shift_end"]);
+                    $endShiftTime = new \DateTime(date("Y-m-d") . " " . $shift["shift_start"]);
 
                     if ($canAdd) {
                         //Check if same day for cut off time
@@ -395,17 +390,15 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
                             $method1->setPrice($shift["price"]);
                             $method1->setCost($shift["price"]);
 
-
                             $sortedShifts[$delDateString] = $method1;
-                            $sortedShiftsValid[$finalDelDate] = "o";
                         }
                     }
                 }
 
-               //array_unique($sortedShifts);
+                //array_unique($sortedShifts);
 
                 ksort($sortedShifts);
-                ksort($sortedShiftsValid);
+
 
                 foreach ($sortedShifts as $sortedShift) {
                     $result->append($sortedShift);
@@ -755,4 +748,3 @@ class PicUp extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements \
         return $result;
     }
 }
-
